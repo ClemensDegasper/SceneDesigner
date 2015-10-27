@@ -96,7 +96,7 @@ void DesignerView::draw() {
         renderLine();
     }
 
-    glPointSize(9);
+    glPointSize(this->pointsize);
     glBegin(GL_POINTS);
     double dx = scene->getSamplingDistance();
 
@@ -121,6 +121,22 @@ void DesignerView::draw() {
 
     //render grid
     paintGrid();
+}
+
+void DesignerView::wheelEvent(QWheelEvent *e){
+
+    double step = e->delta()/8;
+    if(step < 0){
+
+        this->pointsize++;
+        qDebug()<< "zoom in";
+    }else{
+        if(this->pointsize > 1)
+            this->pointsize--;
+        qDebug()<< "zomm out";
+    }
+
+    QGLViewer::wheelEvent(e);
 }
 
 void DesignerView::mousePressEvent(QMouseEvent *e) {
@@ -301,13 +317,12 @@ void DesignerView::addFluidParticles()
 {
     std::vector<point> to_add;
     const double dx = scene->getSamplingDistance();
-    bool first = true;
     double width = fabs(fluid->width()/dx);
     double height = fabs(fluid->height()/dx);
 
 
-    for(double j = 0; j<=height;j+=dx){
-        for(double i = 0; i<= width;i+=dx){
+    for(double j = 0; j<=height;j++){
+        for(double i = 0; i<= width;i++){
             if(fluid->left() < fluid->right()){
                 if( fluid->bottom() < fluid->top()){
                     to_add.push_back(point{fluid->left()+ i*dx,fluid->bottom() + j*dx});
@@ -323,7 +338,6 @@ void DesignerView::addFluidParticles()
             }
         }
     }
-
 
     scene->addParticles(to_add, Fluid1);
 }

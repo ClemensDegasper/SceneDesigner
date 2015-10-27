@@ -34,6 +34,7 @@ public:
 
     void mousePressEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
+    void wheelEvent(QWheelEvent *e);
     void mouseReleaseEvent(QMouseEvent *e) {
         down = false;
         QGLViewer::mouseReleaseEvent(e);
@@ -91,6 +92,7 @@ private:
     float orange[3]          = {1.0, .62, .47};
 
     point mouse = point{0.0, 0.0};
+    int pointsize = 9;
 
 //    int selected_boundary = -1, selected_fluid = -1;
     bool down = false; //mouse down
