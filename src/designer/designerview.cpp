@@ -129,11 +129,9 @@ void DesignerView::wheelEvent(QWheelEvent *e){
     if(step < 0){
 
         this->pointsize++;
-        qDebug()<< "zoom in";
     }else{
         if(this->pointsize > 1)
             this->pointsize--;
-        qDebug()<< "zomm out";
     }
 
     QGLViewer::wheelEvent(e);
@@ -351,7 +349,7 @@ void DesignerView::addRectangleParticles()
     double height = fabs(rectangle->height()/dx);
 
 
-    for(double i = 0; i<= width;i+=dx){
+    for(double i = 0; i<= width;i++){
         if(rectangle->left() < rectangle->right()){
             to_add.push_back(point{rectangle->left()+ i*dx,rectangle->top()}); // top line
             to_add.push_back(point{rectangle->left()+ i*dx,rectangle->bottom()}); // bot line
@@ -362,7 +360,7 @@ void DesignerView::addRectangleParticles()
     }
 
 
-    for(double i = 0; i< height;i+=dx){
+    for(double i = 0; i< height;i++){
         if(first){
             first = false;
             continue;
@@ -375,7 +373,6 @@ void DesignerView::addRectangleParticles()
             to_add.push_back(point{rectangle->right(),rectangle->bottom()+i*dx}); // right line
         }
     }
-
 
     scene->addParticles(to_add, Boundary);
 
