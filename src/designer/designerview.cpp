@@ -379,8 +379,12 @@ void DesignerView::addRectangleParticles()
 }
 
 void DesignerView::addLineParticles(){
+
+    // using the bresehnheim algorithm to draw a line between p1 and p2.
+    // https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#Method
     std::vector<point> to_add;
-    const double dx = scene->getSamplingDistance();
+    double dx = scene->getSamplingDistance();
+    double dy = scene->getSamplingDistance();
     QPointF *p1 = new QPointF(snap(line->p1().x(),dx),snap(line->p1().y(),dx));
     QPointF *p2 = new QPointF(snap(line->p2().x(),dx),snap(line->p2().y(),dx));
 
@@ -389,32 +393,61 @@ void DesignerView::addLineParticles(){
 
     double error = 0;
     double deltaError = fabs(deltaY/deltaX);
+    double startx,endx,starty, endy;
+    starty = p1->y();
+    startx = p1->x();
+    endx = p2->x();
+    endy = p2->y();
+    bool done = false;
 
-    double startx,endx,starty,endy;
-    if(p1->x() < p2->x()){
-        startx = p1->x();
-        endx = p2->x();
-    }else{
-        startx = p2->x();
-        endx = p1->x();
-    }
-    if(p1->y() < p2->y()){
-        starty = p1->y();
-        endy = p2->y();
-    }else{
-        starty = p2->y();
-        endy = p1->y();
+    // vertical line special case
+    if(startx == endx){
+        double y = starty;
+        while(!done){
+            to_add.push_back(point{startx,y});
+            if(starty < endy){
+                y += dy;
+                if(y >= endy)
+                    done = true;
+            }else{
+                y -= dy;
+                if(y <= endy)
+                    done =true;
+            }
+        }
+        scene->addParticles(to_add,Boundary);
+        return;
     }
 
-    for(double x = startx; x < endx; x += dx){
+
+    // gernerall cases
+    double x = startx;
+    while(!done){
 
         to_add.push_back(point{x,starty});
         error += deltaError;
-        if(error >= 0.5){
-            starty += 1;
+        while(error >= 0.5){
+            to_add.push_back(point{x,starty});
+            if(deltaY < 0)
+                starty -= dy;
+            else
+                starty += dy;
             error -= 1;
         }
+
+        // count x up or down depending on end and start points x's
+        if(startx < endx){
+            x += dx;
+            if(x > endx)
+                done = true;
+        }else{
+            x -= dx;
+            if(x < endx)
+                done =true;
+        }
     }
+
+
     scene->addParticles(to_add,Boundary);
 
 }
