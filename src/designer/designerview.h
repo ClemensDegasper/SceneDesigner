@@ -60,6 +60,11 @@ private:
     void renderFluid();
     void renderLine();
 
+    void drawLines();
+    void drawFLuids();
+    void drawRects();
+
+
     void addFluidParticles();
     void addRectangleParticles();
     void addLineParticles();
@@ -75,9 +80,15 @@ private:
     QRectF *fluid = 0;
     QLineF *line = 0;
 
+
+    std::vector<QRectF> rects;
+    std::vector<QRectF> fluid1s;
+    std::vector<QLineF> lines;
+    /*
     std::vector<polygon> fluid1Polygons;
     std::vector<polygon> fluid2Polygons;
     std::vector<polygon> boundaryPolygons;
+    */
 
     bool drawingPolygon;
     bool drawingline = false;

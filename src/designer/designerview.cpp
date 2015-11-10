@@ -96,6 +96,7 @@ void DesignerView::draw() {
         renderLine();
     }
 
+    // draw from grid
     glPointSize(this->pointsize);
     glBegin(GL_POINTS);
     double dx = scene->getSamplingDistance();
@@ -119,21 +120,70 @@ void DesignerView::draw() {
     }
     glEnd();
 
+    //draw from objects
+    drawLines();
+    drawFLuids();
+    drawRects();
+
     //render grid
     paintGrid();
 }
 
+void DesignerView::drawRects(){
+    glLineWidth(3.0);
+
+    BOOST_FOREACH(const QRectF &r, this->rects) {
+        glBegin(GL_LINE_LOOP);
+        glColor3fv(boundary_color);
+        glVertex2d(r.topLeft().x(),r.topLeft().y());
+        glVertex2d(r.topRight().x(),r.topRight().y());
+        glVertex2d(r.bottomRight().x(),r.bottomRight().y());
+        glVertex2d(r.bottomLeft().x(),r.bottomLeft().y());
+        glEnd();
+    }
+}
+
+
+void DesignerView::drawFLuids(){
+    glLineWidth(3.0);
+
+    BOOST_FOREACH(const QRectF &r, this->fluid1s) {
+        glBegin(GL_QUADS);
+        glColor3fv(fluid1_color);
+        glVertex2d(r.topLeft().x(),r.topLeft().y());
+        glVertex2d(r.topRight().x(),r.topRight().y());
+        glVertex2d(r.bottomRight().x(),r.bottomRight().y());
+        glVertex2d(r.bottomLeft().x(),r.bottomLeft().y());
+        glEnd();
+    }
+}
+
+
+void DesignerView::drawLines(){
+    glLineWidth(3.0);
+
+    BOOST_FOREACH(const QLineF &l, this->lines) {
+        glBegin(GL_LINE_STRIP);
+        glColor3fv(boundary_color);
+        glVertex2d(l.p1().x(),l.p1().y());
+        glVertex2d(l.p2().x(),l.p2().y());
+        glEnd();
+    }
+
+}
+
+
 void DesignerView::wheelEvent(QWheelEvent *e){
 
+    /*
     double step = e->delta()/8;
     if(step < 0){
-
         this->pointsize++;
     }else{
         if(this->pointsize > 1)
             this->pointsize--;
     }
-
+    */
     QGLViewer::wheelEvent(e);
 }
 
@@ -183,7 +233,8 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
     if(mode == Line && e->button() == Qt::LeftButton){
         if(drawingline){
             line->setP2(QPointF(mouse.v[0], mouse.v[1]));
-            addLineParticles();
+            //addLineParticles();
+            this->lines.push_back(QLineF(*line));//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
         }else{
             line = new QLineF(QPointF(mouse.v[0], mouse.v[1]),QPointF(mouse.v[0], mouse.v[1]));
         }
@@ -192,6 +243,17 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
     }
 
     if(mode == Fluid1 && e->button() == Qt::LeftButton){
+        if(drawingfluid){
+            fluid->setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
+            this->fluid1s.push_back(QRectF(*fluid));
+            //addFluidParticles();
+        }else{
+            fluid = new QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
+        drawingfluid = !drawingfluid;
+        updateGL();
+    }
+    if(mode == Fluid2 && e->button() == Qt::LeftButton){
         if(drawingfluid){
             fluid->setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
             addFluidParticles();
@@ -205,7 +267,8 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
     if(mode == Rectangle && e->button() == Qt::LeftButton) {
         if(drawingRectangle){
             rectangle->setBottomRight(QPointF(mouse.v[0],mouse.v[1]));
-            addRectangleParticles();
+            this->rects.push_back(QRectF(*rectangle));
+            //addRectangleParticles();
         }else{
             rectangle = new QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
         }
@@ -447,12 +510,11 @@ void DesignerView::addLineParticles(){
         }
     }
 
-
     scene->addParticles(to_add,Boundary);
 
 }
 
-
+/*
 bool DesignerView::savePolygon(polygon *b, ParticleType type) {
     switch (type) {
     case Boundary:
@@ -476,7 +538,7 @@ bool DesignerView::savePolygon(polygon *b, ParticleType type) {
     default:
         break;
     }
-}
+}*/
 
 bool DesignerView::addPolygonalParticles(polygon *b, ParticleType type) {
     if (b->points.size() < 2) return true;
