@@ -184,9 +184,10 @@ void Designer::save() {
 
 inline
 void Designer::open() {
+
     QString open_file = QFileDialog::getOpenFileName(this, tr("Open File"),
                                                      "", tr("SPH JSON Files (*.json)"));
-
+    this->scene->clear();
     if (!open_file.isEmpty()) {
         open_scene(scene, open_file);
     }
@@ -194,3 +195,8 @@ void Designer::open() {
 
 
 
+
+void Designer::on_pushButton_3_released()
+{
+    this->scene->clear();
+}

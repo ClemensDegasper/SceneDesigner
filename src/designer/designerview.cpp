@@ -132,7 +132,7 @@ void DesignerView::draw() {
 void DesignerView::drawRects(){
     glLineWidth(3.0);
 
-    BOOST_FOREACH(const QRectF &r, this->rects) {
+    BOOST_FOREACH(const QRectF &r, this->scene->rects) {
         glBegin(GL_LINE_LOOP);
         glColor3fv(boundary_color);
         glVertex2d(r.topLeft().x(),r.topLeft().y());
@@ -147,7 +147,7 @@ void DesignerView::drawRects(){
 void DesignerView::drawFLuids(){
     glLineWidth(3.0);
 
-    BOOST_FOREACH(const QRectF &r, this->fluid1s) {
+    BOOST_FOREACH(const QRectF &r, this->scene->fluid1s) {
         glBegin(GL_QUADS);
         glColor3fv(fluid1_color);
         glVertex2d(r.topLeft().x(),r.topLeft().y());
@@ -162,7 +162,7 @@ void DesignerView::drawFLuids(){
 void DesignerView::drawLines(){
     glLineWidth(3.0);
 
-    BOOST_FOREACH(const QLineF &l, this->lines) {
+    BOOST_FOREACH(const QLineF &l, this->scene->lines) {
         glBegin(GL_LINE_STRIP);
         glColor3fv(boundary_color);
         glVertex2d(l.p1().x(),l.p1().y());
@@ -191,8 +191,38 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
     down = true;
 
     if (mode == Pan) {
+
+        qDebug() << this->scene->fluid1s.size();
+        qDebug() << this->scene->rects.size();
+        qDebug() << this->scene->lines.size();
+
         QGLViewer::mousePressEvent(e);
         return;
+    }
+
+    if (mode == None){
+        //check if deleting fluids
+        for(int i = 0; i < this->scene->fluid1s.size(); i++) {
+            if(this->scene->fluid1s.at(i).contains(mouse.v[0],mouse.v[1])){
+                this->scene->fluid1s.erase(this->scene->fluid1s.begin()+i);
+            }
+        }
+
+        //check if deleting rects
+        for(int i = 0; i < this->scene->rects.size();i++){
+            if(this->scene->rects.at(i).contains(mouse.v[0],mouse.v[1])){
+                this->scene->rects.erase(this->scene->rects.begin()+i);
+            }
+        }
+
+        //check if deleting lines
+        QLineF l = QLineF(mouse.v[0]-1,mouse.v[1]-1,mouse.v[0]+1,mouse.v[1]+1);
+        for(int i = 0; i < this->scene->lines.size();i++){
+            if(this->scene->lines.at(i).intersect(l,new QPointF()) == QLineF::BoundedIntersection){   // in the qpoint the exapt point of intersection would be saved
+                this->scene->lines.erase(this->scene->lines.begin()+i);
+            }
+        }
+
     }
     /*
     if (e->button() == Qt::RightButton) {
@@ -232,11 +262,11 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
 
     if(mode == Line && e->button() == Qt::LeftButton){
         if(drawingline){
-            line->setP2(QPointF(mouse.v[0], mouse.v[1]));
+            line.setP2(QPointF(mouse.v[0], mouse.v[1]));
             //addLineParticles();
-            this->lines.push_back(QLineF(*line));//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
+            this->scene->lines.push_back(line);//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
         }else{
-            line = new QLineF(QPointF(mouse.v[0], mouse.v[1]),QPointF(mouse.v[0], mouse.v[1]));
+            line = QLineF(QPointF(mouse.v[0], mouse.v[1]),QPointF(mouse.v[0], mouse.v[1]));
         }
         drawingline = !drawingline;
         updateGL();
@@ -244,21 +274,21 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
 
     if(mode == Fluid1 && e->button() == Qt::LeftButton){
         if(drawingfluid){
-            fluid->setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
-            this->fluid1s.push_back(QRectF(*fluid));
+            fluid.setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
+            this->scene->fluid1s.push_back(fluid);
             //addFluidParticles();
         }else{
-            fluid = new QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+            fluid = QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
         }
         drawingfluid = !drawingfluid;
         updateGL();
     }
     if(mode == Fluid2 && e->button() == Qt::LeftButton){
         if(drawingfluid){
-            fluid->setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
+            fluid.setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
             addFluidParticles();
         }else{
-            fluid = new QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+            fluid = QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
         }
         drawingfluid = !drawingfluid;
         updateGL();
@@ -266,11 +296,11 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
 
     if(mode == Rectangle && e->button() == Qt::LeftButton) {
         if(drawingRectangle){
-            rectangle->setBottomRight(QPointF(mouse.v[0],mouse.v[1]));
-            this->rects.push_back(QRectF(*rectangle));
+            rectangle.setBottomRight(QPointF(mouse.v[0],mouse.v[1]));
+            this->scene->rects.push_back(QRectF(rectangle));
             //addRectangleParticles();
         }else{
-            rectangle = new QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+            rectangle = QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
         }
         drawingRectangle = !drawingRectangle;
         updateGL();
@@ -291,14 +321,14 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
         current_polygon->last() = toWorld(e);
     }
     if(drawingRectangle) {
-        rectangle->setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
+        rectangle.setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
     }
     if(drawingfluid){
-        fluid->setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
+        fluid.setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
     }
     if(drawingline){
 
-        line->setP2(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
+        line.setP2(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
     }
     if(down) {
         if(mode == Boundary)    //continously drawing boundrys
@@ -345,10 +375,10 @@ void DesignerView::renderRectangle()
 
     glLineWidth(3.0);
     glBegin(GL_LINE_LOOP);
-    glVertex2d(rectangle->topLeft().x(),rectangle->topLeft().y());
-    glVertex2d(rectangle->bottomLeft().x(),rectangle->bottomLeft().y());
-    glVertex2d(rectangle->bottomRight().x(),rectangle->bottomRight().y());
-    glVertex2d(rectangle->topRight().x(),rectangle->topRight().y());
+    glVertex2d(rectangle.topLeft().x(),rectangle.topLeft().y());
+    glVertex2d(rectangle.bottomLeft().x(),rectangle.bottomLeft().y());
+    glVertex2d(rectangle.bottomRight().x(),rectangle.bottomRight().y());
+    glVertex2d(rectangle.topRight().x(),rectangle.topRight().y());
     glEnd();
 
 }
@@ -358,10 +388,10 @@ void DesignerView::renderFluid()
     glColor3fv(fluid1_color);
     glLineWidth(3.0);
     glBegin(GL_LINE_LOOP);
-    glVertex2d(fluid->topLeft().x(),fluid->topLeft().y());
-    glVertex2d(fluid->bottomLeft().x(),fluid->bottomLeft().y());
-    glVertex2d(fluid->bottomRight().x(),fluid->bottomRight().y());
-    glVertex2d(fluid->topRight().x(),fluid->topRight().y());
+    glVertex2d(fluid.topLeft().x(),fluid.topLeft().y());
+    glVertex2d(fluid.bottomLeft().x(),fluid.bottomLeft().y());
+    glVertex2d(fluid.bottomRight().x(),fluid.bottomRight().y());
+    glVertex2d(fluid.topRight().x(),fluid.topRight().y());
     glEnd();
 }
 
@@ -369,38 +399,39 @@ void DesignerView::renderLine()
 {
     glLineWidth(3.0);
     glBegin(GL_LINE_STRIP);
-    glVertex2d(line->p1().x(),line->p1().y());
-    glVertex2d(line->p2().x(),line->p2().y());
+    glVertex2d(line.p1().x(),line.p1().y());
+    glVertex2d(line.p2().x(),line.p2().y());
     glEnd();
 }
 
+
 void DesignerView::addFluidParticles()
 {
-    std::vector<point> to_add;
-    const double dx = scene->getSamplingDistance();
-    double width = fabs(fluid->width()/dx);
-    double height = fabs(fluid->height()/dx);
+//    std::vector<point> to_add;
+//    const double dx = scene->getSamplingDistance();
+//    double width = fabs(fluid->width()/dx);
+//    double height = fabs(fluid->height()/dx);
 
 
-    for(double j = 0; j<=height;j++){
-        for(double i = 0; i<= width;i++){
-            if(fluid->left() < fluid->right()){
-                if( fluid->bottom() < fluid->top()){
-                    to_add.push_back(point{fluid->left()+ i*dx,fluid->bottom() + j*dx});
-                }else{
-                    to_add.push_back(point{fluid->left()+ i*dx,fluid->top() + j*dx});
-                }
-            }else{
-                if( fluid->bottom() < fluid->top()){
-                    to_add.push_back(point{fluid->right()+ i*dx,fluid->bottom() + j*dx});
-                }else{
-                    to_add.push_back(point{fluid->right()+ i*dx,fluid->top() + j*dx});
-                }
-            }
-        }
-    }
+//    for(double j = 0; j<=height;j++){
+//        for(double i = 0; i<= width;i++){
+//            if(fluid->left() < fluid->right()){
+//                if( fluid->bottom() < fluid->top()){
+//                    to_add.push_back(point{fluid->left()+ i*dx,fluid->bottom() + j*dx});
+//                }else{
+//                    to_add.push_back(point{fluid->left()+ i*dx,fluid->top() + j*dx});
+//                }
+//            }else{
+//                if( fluid->bottom() < fluid->top()){
+//                    to_add.push_back(point{fluid->right()+ i*dx,fluid->bottom() + j*dx});
+//                }else{
+//                    to_add.push_back(point{fluid->right()+ i*dx,fluid->top() + j*dx});
+//                }
+//            }
+//        }
+//    }
 
-    scene->addParticles(to_add, Fluid1);
+//    scene->addParticles(to_add, Fluid1);
 }
 
 void DesignerView::addRectangleParticles()
@@ -408,17 +439,17 @@ void DesignerView::addRectangleParticles()
     std::vector<point> to_add;
     const double dx = scene->getSamplingDistance();
     bool first = true;
-    double width = fabs(rectangle->width()/dx);
-    double height = fabs(rectangle->height()/dx);
+    double width = fabs(rectangle.width()/dx);
+    double height = fabs(rectangle.height()/dx);
 
 
     for(double i = 0; i<= width;i++){
-        if(rectangle->left() < rectangle->right()){
-            to_add.push_back(point{rectangle->left()+ i*dx,rectangle->top()}); // top line
-            to_add.push_back(point{rectangle->left()+ i*dx,rectangle->bottom()}); // bot line
+        if(rectangle.left() < rectangle.right()){
+            to_add.push_back(point{rectangle.left()+ i*dx,rectangle.top()}); // top line
+            to_add.push_back(point{rectangle.left()+ i*dx,rectangle.bottom()}); // bot line
         }else{
-            to_add.push_back(point{rectangle->right()+ i*dx,rectangle->top()}); // top line
-            to_add.push_back(point{rectangle->right()+ i*dx,rectangle->bottom()}); // bot line
+            to_add.push_back(point{rectangle.right()+ i*dx,rectangle.top()}); // top line
+            to_add.push_back(point{rectangle.right()+ i*dx,rectangle.bottom()}); // bot line
         }
     }
 
@@ -428,12 +459,12 @@ void DesignerView::addRectangleParticles()
             first = false;
             continue;
         }
-        if(rectangle->bottom() > rectangle->top()){
-            to_add.push_back(point{rectangle->left(),rectangle->top()+i*dx}); // left line
-            to_add.push_back(point{rectangle->right(),rectangle->top()+i*dx}); // right line
+        if(rectangle.bottom() > rectangle.top()){
+            to_add.push_back(point{rectangle.left(),rectangle.top()+i*dx}); // left line
+            to_add.push_back(point{rectangle.right(),rectangle.top()+i*dx}); // right line
         }else{
-            to_add.push_back(point{rectangle->left(),rectangle->bottom()+i*dx}); // left line
-            to_add.push_back(point{rectangle->right(),rectangle->bottom()+i*dx}); // right line
+            to_add.push_back(point{rectangle.left(),rectangle.bottom()+i*dx}); // left line
+            to_add.push_back(point{rectangle.right(),rectangle.bottom()+i*dx}); // right line
         }
     }
 
@@ -448,8 +479,8 @@ void DesignerView::addLineParticles(){
     std::vector<point> to_add;
     double dx = scene->getSamplingDistance();
     double dy = scene->getSamplingDistance();
-    QPointF *p1 = new QPointF(snap(line->p1().x(),dx),snap(line->p1().y(),dx));
-    QPointF *p2 = new QPointF(snap(line->p2().x(),dx),snap(line->p2().y(),dx));
+    QPointF *p1 = new QPointF(snap(line.p1().x(),dx),snap(line.p1().y(),dx));
+    QPointF *p2 = new QPointF(snap(line.p2().x(),dx),snap(line.p2().y(),dx));
 
     double deltaX = p2->x() - p1->x();
     double deltaY = p2->y() - p1->y();

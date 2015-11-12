@@ -76,14 +76,12 @@ private:
     Designer *designer = 0;
     polygon *current_polygon = 0;
     ParticleType mode = Pan;
-    QRectF *rectangle = 0;
-    QRectF *fluid = 0;
-    QLineF *line = 0;
+    QRectF rectangle;
+    QRectF fluid;
+    QLineF line;
 
 
-    std::vector<QRectF> rects;
-    std::vector<QRectF> fluid1s;
-    std::vector<QLineF> lines;
+
     /*
     std::vector<polygon> fluid1Polygons;
     std::vector<polygon> fluid2Polygons;

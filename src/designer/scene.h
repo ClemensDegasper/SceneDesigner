@@ -6,6 +6,8 @@
 #include <vector>
 #include <cassert>
 #include <boost/foreach.hpp>
+#include <QRectF>
+#include <QLineF>
 
 union point {
     struct {
@@ -130,6 +132,7 @@ public:
     double getAccelerationY() const { return accelerationY; }
     double getDampingFactor() const { return dampingFactor; }
 
+
     void setGrid(double width, double height, double samplingDistance) {
         this->width = width;
         this->height = height;
@@ -175,7 +178,7 @@ public:
     }
 
     void addSolidBoundary(const polygon &l) {
-        solidBoundaries.push_back(l);
+        //solidBoundaries.push_back(l);
         emit changed();
     }
 
@@ -191,6 +194,17 @@ public:
         g(snap(p.x), snap(p.y)) = type;
     }
 
+    void addFluidRect(QRectF r){
+        this->fluid1s.push_back(r);
+    }
+
+    void addBoundaryRect(QRectF r){
+        this->rects.push_back(r);
+    }
+    void addBoundaryLines(QLineF l){
+        this->lines.push_back(l);
+    }
+
 
     void deleteParticle(const point &p) {
         g(snap(p.x), snap(p.y)) = None;
@@ -199,11 +213,34 @@ public:
 
     const grid &const_grid = g;
 
+    std::vector<QRectF> rects;
+    std::vector<QRectF> fluid1s;
+    std::vector<QLineF> lines;
+
+    void clearFluids(){
+        while(!fluid1s.empty()){
+            fluid1s.pop_back();
+        }
+
+    }
+
+    void clearLines(){
+        while(!lines.empty()){
+            lines.pop_back();
+        }
+    }
+
+    void clearRects(){
+        while(!rects.empty()){
+            rects.pop_back();
+        }
+    }
+
     void clear() {
-        solidBoundaries.clear();
-        fluids.clear();
-        fluid_particles.clear();
-        boundary_particles.clear();
+
+        clearFluids();
+        clearLines();
+        clearRects();
         g.clear();
         emit changed();
     }
@@ -233,10 +270,13 @@ private:
     int c = 0;
     double alpha = 0.0;
 
+
+
+/*
     std::vector<polygon> solidBoundaries;
     std::vector<polygon> fluids;
     std::vector<point> fluid_particles, boundary_particles;
-
+*/
     std::vector<std::vector<ParticleType> > particles;
 
     grid g = grid(std::ceil(width/samplingDistance), std::ceil(height/samplingDistance));

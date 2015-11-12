@@ -318,6 +318,13 @@
               </item>
              </layout>
             </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_3">
+              <property name="text">
+               <string>PushButton</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
          </widget>
@@ -326,8 +333,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>98</width>
-            <height>28</height>
+            <width>556</width>
+            <height>307</height>
            </rect>
           </property>
           <attribute name="label">
@@ -599,8 +606,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>98</width>
-            <height>28</height>
+            <width>556</width>
+            <height>307</height>
            </rect>
           </property>
           <attribute name="label">
