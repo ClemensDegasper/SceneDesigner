@@ -133,13 +133,65 @@ void DesignerView::drawRects(){
     glLineWidth(3.0);
 
     BOOST_FOREACH(const QRectF &r, this->scene->rects) {
-        glBegin(GL_LINE_LOOP);
+        glBegin(GL_LINE_STRIP);
         glColor3fv(boundary_color);
-        glVertex2d(r.topLeft().x(),r.topLeft().y());
-        glVertex2d(r.topRight().x(),r.topRight().y());
-        glVertex2d(r.bottomRight().x(),r.bottomRight().y());
-        glVertex2d(r.bottomLeft().x(),r.bottomLeft().y());
+
+        // check if rects is drawn upside down
+        if(r.top() > r.bottom()){
+            glVertex2d(r.topLeft().x(),r.topLeft().y());
+            glVertex2d(r.bottomLeft().x(),r.bottomLeft().y());
+            glVertex2d(r.bottomRight().x(),r.bottomRight().y());
+            glVertex2d(r.topRight().x(),r.topRight().y());
+        }else{  // switch top and bot
+            glVertex2d(r.bottomLeft().x(),r.bottomLeft().y());
+            glVertex2d(r.topLeft().x(),r.topLeft().y());
+            glVertex2d(r.topRight().x(),r.topRight().y());
+            glVertex2d(r.bottomRight().x(),r.bottomRight().y());
+        }
+
+
         glEnd();
+    }
+}
+
+QPointF DesignerView::getConnectPointOfRect(QRectF r,bool left)
+{
+    // if left true, return top left of rect else return top right of rect
+    if(left)
+    {
+        if(r.left() < r.right()){// left is left
+            if(r.bottom() < r.top())//bot is bot
+            {
+                return r.topLeft();
+            }else{ //top is bot
+                return r.bottomLeft();
+            }
+
+        }else{//right is left
+            if(r.bottom() < r.top())//bot is bot
+            {
+                return r.topRight();
+            }else{// top is bot
+                return r.bottomRight();
+            }
+        }
+    }else{
+        if(r.left() < r.right()){// left is left
+            if(r.bottom() < r.top())//bot is bot
+            {
+                return r.topRight();
+            }else{ //top is bot
+                return r.bottomRight();
+            }
+
+        }else{//right is left
+            if(r.bottom() < r.top())//bot is bot
+            {
+                return r.topLeft();
+            }else{// top is bot
+                return r.bottomLeft();
+            }
+        }
     }
 }
 
@@ -216,9 +268,13 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         }
 
         //check if deleting lines
-        QLineF l = QLineF(mouse.v[0]-1,mouse.v[1]-1,mouse.v[0]+1,mouse.v[1]+1);
+        double epsilon = 0.03;
+        QLineF l1 = QLineF(mouse.v[0] - epsilon ,mouse.v[1] - epsilon ,mouse.v[0] + epsilon ,mouse.v[1] + epsilon);
+        QLineF l2 = QLineF(mouse.v[0] + epsilon ,mouse.v[1] + epsilon ,mouse.v[0] - epsilon ,mouse.v[1] - epsilon);
+        // creating to lines out ot that one mouse coord one for every diagonal
+
         for(int i = 0; i < this->scene->lines.size();i++){
-            if(this->scene->lines.at(i).intersect(l,new QPointF()) == QLineF::BoundedIntersection){   // in the qpoint the exapt point of intersection would be saved
+            if(this->scene->lines.at(i).intersect(l1,new QPointF()) == QLineF::BoundedIntersection || this->scene->lines.at(i).intersect(l2,new QPointF()) == QLineF::BoundedIntersection){   // in the qpoint the exapt point of intersection would be saved
                 this->scene->lines.erase(this->scene->lines.begin()+i);
             }
         }
@@ -262,9 +318,23 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
 
     if(mode == Line && e->button() == Qt::LeftButton){
         if(drawingline){
-            line.setP2(QPointF(mouse.v[0], mouse.v[1]));
+            // Check if end line is in rects
+            // if yes connect line directly to right edge of rect
+            QPointF endpoint = QPointF(mouse.v[0], mouse.v[1]);
+            BOOST_FOREACH(const QRectF &r, this->scene->rects) {
+                if(r.contains(endpoint))
+                {
+                    if(line.p1().x() < r.left())
+                        endpoint = getConnectPointOfRect(r,true);
+                    else
+                        endpoint = getConnectPointOfRect(r,false);
+                }
+            }
+
+            line.setP2(endpoint);
             //addLineParticles();
             this->scene->lines.push_back(line);//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
+
         }else{
             line = QLineF(QPointF(mouse.v[0], mouse.v[1]),QPointF(mouse.v[0], mouse.v[1]));
         }

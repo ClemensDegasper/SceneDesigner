@@ -64,6 +64,8 @@ private:
     void drawFLuids();
     void drawRects();
 
+    QPointF getConnectPointOfRect(QRectF r,bool left);
+
 
     void addFluidParticles();
     void addRectangleParticles();
