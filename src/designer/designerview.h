@@ -65,6 +65,9 @@ private:
     void drawRects();
 
     QPointF getConnectPointOfRect(QRectF r,bool left);
+    QRectF isPointInRects(QPointF p);
+    QRectF getFluidInBasin(QRectF r, QPointF p);
+    QRectF makeRect(QPointF p1, QPointF p2);
 
 
     void addFluidParticles();

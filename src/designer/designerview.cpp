@@ -122,8 +122,8 @@ void DesignerView::draw() {
 
     //draw from objects
     drawLines();
-    drawFLuids();
     drawRects();
+    drawFLuids();
 
     //render grid
     paintGrid();
@@ -195,6 +195,45 @@ QPointF DesignerView::getConnectPointOfRect(QRectF r,bool left)
     }
 }
 
+QRectF DesignerView::isPointInRects(QPointF p)
+{
+    BOOST_FOREACH(const QRectF &r, this->scene->rects) {
+        if(r.contains(p))
+        {
+            return r;
+        }
+    }
+    return QRectF(0,0,0,0);
+}
+
+QRectF DesignerView::getFluidInBasin(QRectF r, QPointF p)
+{
+    QRectF(QPointF(r.left(),p.y()),QPointF(r.right(),r.bottom()));
+}
+
+QRectF DesignerView::makeRect(QPointF p1, QPointF p2)
+{
+    QRectF r = QRectF();
+    if(p1.x() < p2.x()){ // p1 is left
+        if(p1.y()> p2.y()){ // p1 is top
+            r.setTopLeft(p1);
+            r.setBottomRight(p2);
+        }else{ // p2 is top
+            r.setBottomLeft(p1);
+            r.setTopRight(p2);
+        }
+    }else{ // p2 is left
+        if(p1.y()> p2.y()){ // p1 is top
+            r.setTopRight(p1);
+            r.setBottomLeft(p2);
+        }else{ // p2 is top
+            r.setBottomRight(p1);
+            r.setTopLeft(p2);
+        }
+    }
+    return r;
+}
+
 
 void DesignerView::drawFLuids(){
     glLineWidth(3.0);
@@ -248,6 +287,12 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         qDebug() << this->scene->rects.size();
         qDebug() << this->scene->lines.size();
 
+        BOOST_FOREACH(const QRectF &r, this->scene->rects) {
+            qDebug() << r.topLeft().x();
+            qDebug() << r.topLeft().y();
+            qDebug() << r.bottomRight().x();
+            qDebug() << r.bottomRight().y();
+        }
         QGLViewer::mousePressEvent(e);
         return;
     }
@@ -278,7 +323,8 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
                 this->scene->lines.erase(this->scene->lines.begin()+i);
             }
         }
-
+        updateGL();
+        return;
     }
     /*
     if (e->button() == Qt::RightButton) {
@@ -321,14 +367,12 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
             // Check if end line is in rects
             // if yes connect line directly to right edge of rect
             QPointF endpoint = QPointF(mouse.v[0], mouse.v[1]);
-            BOOST_FOREACH(const QRectF &r, this->scene->rects) {
-                if(r.contains(endpoint))
-                {
-                    if(line.p1().x() < r.left())
-                        endpoint = getConnectPointOfRect(r,true);
-                    else
-                        endpoint = getConnectPointOfRect(r,false);
-                }
+            QRectF r = isPointInRects(endpoint);
+            if(!r.isNull()){
+                if(line.p1().x() < r.left())
+                    endpoint = r.topLeft();//getConnectPointOfRect(r,true);
+                else
+                    endpoint = r.topRight();getConnectPointOfRect(r,false);
             }
 
             line.setP2(endpoint);
@@ -340,6 +384,7 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         }
         drawingline = !drawingline;
         updateGL();
+        return;
     }
 
     if(mode == Fluid1 && e->button() == Qt::LeftButton){
@@ -348,10 +393,22 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
             this->scene->fluid1s.push_back(fluid);
             //addFluidParticles();
         }else{
-            fluid = QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+            QPointF p = QPointF(mouse.v[0],mouse.v[1]);
+            //check if click inside basin
+            QRectF r = isPointInRects(p);
+            if(!r.isNull()){    // click is in basin, fill basin with fluid
+                fluid = QRectF(QPointF(r.left(),p.y()),QPointF(r.right(),r.bottom())); //getFluidInBasin(r, p);
+                this->scene->fluid1s.push_back(fluid);
+                updateGL();
+                return;
+            }else{  // click not in basin, make normal fluid
+                fluid = QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+            }
+
         }
         drawingfluid = !drawingfluid;
         updateGL();
+        return;
     }
     if(mode == Fluid2 && e->button() == Qt::LeftButton){
         if(drawingfluid){
@@ -362,11 +419,14 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         }
         drawingfluid = !drawingfluid;
         updateGL();
+        return;
     }
 
     if(mode == Rectangle && e->button() == Qt::LeftButton) {
         if(drawingRectangle){
-            rectangle.setBottomRight(QPointF(mouse.v[0],mouse.v[1]));
+            QPointF firstClick = rectangle.topLeft();
+            QPointF secondClick = QPointF(mouse.v[0],mouse.v[1]);
+            rectangle = makeRect(firstClick,secondClick);
             this->scene->rects.push_back(QRectF(rectangle));
             //addRectangleParticles();
         }else{
@@ -374,6 +434,7 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         }
         drawingRectangle = !drawingRectangle;
         updateGL();
+        return;
     }
 
 }
