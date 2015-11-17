@@ -290,7 +290,7 @@
               <item>
                <widget class="QPushButton" name="buttonRectangle">
                 <property name="text">
-                 <string>&amp;Rectangle</string>
+                 <string>B&amp;asin</string>
                 </property>
                 <property name="shortcut">
                  <string>R</string>
@@ -333,8 +333,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>556</width>
-            <height>307</height>
+            <width>100</width>
+            <height>30</height>
            </rect>
           </property>
           <attribute name="label">
@@ -606,8 +606,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>556</width>
-            <height>307</height>
+            <width>100</width>
+            <height>30</height>
            </rect>
           </property>
           <attribute name="label">
