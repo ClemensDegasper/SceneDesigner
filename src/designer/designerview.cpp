@@ -95,6 +95,9 @@ void DesignerView::draw() {
     if(drawingline){
         renderLine();
     }
+    if(!this->highlightP.isNull()){
+        renderHighlight();
+    }
 
     // draw from grid
     glPointSize(this->pointsize);
@@ -234,6 +237,30 @@ QRectF DesignerView::makeRect(QPointF p1, QPointF p2)
     return r;
 }
 
+QPointF DesignerView::getRectEdgePointFromMousePoint(QPointF mouse)
+{
+    QRectF r = isPointInRects(mouse);
+    QPointF highlightPoint;
+    if(!r.isNull()){
+        if(mouse.x() < r.left()){
+            highlightPoint = r.topLeft();
+        }else{
+            if(mouse.x() > r.right()){
+                highlightPoint = r.topRight();
+            }else{
+                if(mouse.x() < r.center().x()){
+                    highlightPoint = r.topLeft();
+                }else{
+                    highlightPoint = r.topRight();
+                }
+            }
+        }
+    }else{
+        highlightPoint = QPointF(0,0);
+    }
+    return highlightPoint;
+}
+
 
 void DesignerView::drawFLuids(){
     glLineWidth(3.0);
@@ -367,20 +394,26 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
             // Check if end line is in rects
             // if yes connect line directly to right edge of rect
             QPointF endpoint = QPointF(mouse.v[0], mouse.v[1]);
-            QRectF r = isPointInRects(endpoint);
-            if(!r.isNull()){
-                if(line.p1().x() < r.left())
-                    endpoint = r.topLeft();//getConnectPointOfRect(r,true);
-                else
-                    endpoint = r.topRight();getConnectPointOfRect(r,false);
-            }
 
+            // check if second click is in any basins
+            // if yes put point at according edge of basin
+            QPointF tmp = getRectEdgePointFromMousePoint(endpoint);
+            if(!tmp.isNull())
+                endpoint = tmp;
+            //else set mousepoint as p2 of line
             line.setP2(endpoint);
             //addLineParticles();
             this->scene->lines.push_back(line);//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
 
         }else{
             line = QLineF(QPointF(mouse.v[0], mouse.v[1]),QPointF(mouse.v[0], mouse.v[1]));
+            QPointF startpoint = QPointF(mouse.v[0],mouse.v[1]);
+
+            // first click behave same as second
+            QPointF tmp = getRectEdgePointFromMousePoint(startpoint);
+            if(!tmp.isNull())
+                startpoint = tmp;
+            line.setP1(startpoint);
         }
         drawingline = !drawingline;
         updateGL();
@@ -447,6 +480,15 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
         QGLViewer::mouseMoveEvent(e);
         return;
     }
+    if(mode == Line){
+        if(drawingline){
+            line.setP2(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
+        }
+        // set hightlight point for p2
+        QPointF mousepoint = QPointF(mouse.v[0],mouse.v[1]);
+        this->highlightP = getRectEdgePointFromMousePoint(mousepoint);
+
+    }
 
     if (drawingPolygon)  {
         current_polygon->last() = toWorld(e);
@@ -457,10 +499,7 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
     if(drawingfluid){
         fluid.setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
     }
-    if(drawingline){
 
-        line.setP2(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
-    }
     if(down) {
         if(mode == Boundary)    //continously drawing boundrys
             addParticle(mouse, size, mode);
@@ -532,6 +571,15 @@ void DesignerView::renderLine()
     glBegin(GL_LINE_STRIP);
     glVertex2d(line.p1().x(),line.p1().y());
     glVertex2d(line.p2().x(),line.p2().y());
+    glEnd();
+}
+
+void DesignerView::renderHighlight()
+{
+    glPointSize(5);
+    glBegin(GL_POINTS);
+    glColor3fv(green);
+    glVertex2f(this->highlightP.x(),this->highlightP.y());
     glEnd();
 }
 

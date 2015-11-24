@@ -59,6 +59,7 @@ private:
     void renderRectangle();
     void renderFluid();
     void renderLine();
+    void renderHighlight();
 
     void drawLines();
     void drawFLuids();
@@ -68,6 +69,7 @@ private:
     QRectF isPointInRects(QPointF p);
     QRectF getFluidInBasin(QRectF r, QPointF p);
     QRectF makeRect(QPointF p1, QPointF p2);
+    QPointF getRectEdgePointFromMousePoint(QPointF p);
 
 
     void addFluidParticles();
@@ -84,6 +86,9 @@ private:
     QRectF rectangle;
     QRectF fluid;
     QLineF line;
+
+    QPointF highlightP;
+
 
 
 
@@ -104,6 +109,8 @@ private:
     float highlight_color[3] = {0.9, 0.3, 0.3};
     float white[3]           = {1.0, 1.0, 1.0};
     float orange[3]          = {1.0, .62, .47};
+    float green[3]           = {.51, 1.0, 0.0};
+
 
     point mouse = point{0.0, 0.0};
     int pointsize = 9;
