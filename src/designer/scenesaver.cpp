@@ -28,7 +28,9 @@ QVariantMap save_parameters(Scene * s) {
     p["g"] = QVariantList({s->getAccelerationX(), s->getAccelerationY()});
     return p;
 }
-
+double snap(double x, double dx) {
+    return std::round(x / dx) * dx;
+}
 QVariantList save_particle_list(const grid &g, double dx, ParticleType type) {
     QVariantList all;
 
@@ -236,29 +238,163 @@ void open_scene(Scene *s, const QString &file_name) {
 }
 
 
+std::vector<point> addLineParticles(QLineF l, double samplingDistance){
+
+    // using the bresehnheim algorithm to draw a line between p1 and p2.
+    // https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#Method
+    std::vector<point> to_add;
+    double dx = samplingDistance;
+    double dy = samplingDistance;
+    QPointF *p1 = new QPointF(snap(l.p1().x(),dx),snap(l.p1().y(),dx));
+    QPointF *p2 = new QPointF(snap(l.p2().x(),dx),snap(l.p2().y(),dx));
+
+    double deltaX = p2->x() - p1->x();
+    double deltaY = p2->y() - p1->y();
+
+    double error = 0;
+    double deltaError = fabs(deltaY/deltaX);
+    double startx,endx,starty, endy;
+    starty = p1->y();
+    startx = p1->x();
+    endx = p2->x();
+    endy = p2->y();
+    bool done = false;
+
+    // vertical line special case
+    if(startx == endx){
+        double y = starty;
+        while(!done){
+            to_add.push_back(point{startx,y});
+            if(starty < endy){
+                y += dy;
+                if(y >= endy)
+                    done = true;
+            }else{
+                y -= dy;
+                if(y <= endy)
+                    done =true;
+            }
+        }
+        return to_add;
+
+    }
 
 
+    // gernerall cases
+    double x = startx;
+    while(!done){
+
+        to_add.push_back(point{x,starty});
+        error += deltaError;
+        while(error >= 0.5){
+            to_add.push_back(point{x,starty});
+            if(deltaY < 0)
+                starty -= dy;
+            else
+                starty += dy;
+            error -= 1;
+        }
+
+        // count x up or down depending on end and start points x's
+        if(startx < endx){
+            x += dx;
+            if(x > endx)
+                done = true;
+        }else{
+            x -= dx;
+            if(x < endx)
+                done =true;
+        }
+    }
+
+    return to_add;
+
+}
+
+std::vector<point> addRectangleParticles(QRectF rectangle,double sampledist)
+{
+    std::vector<point> to_add;
+    const double dx = sampledist;
+    double width = fabs(rectangle.width()/dx);
+    double height = fabs(rectangle.height()/dx);
 
 
+    for(double i = 0; i<= width;i++){
+            to_add.push_back(point{rectangle.left()+ i*dx,rectangle.bottom()}); // bot line
+    }
 
 
+    for(double i = 0; i<= height;i++){
+
+            to_add.push_back(point{rectangle.left(),rectangle.bottom()+i*dx}); // left line
+            to_add.push_back(point{rectangle.right(),rectangle.bottom()+i*dx}); // right line
+    }
+
+    return to_add;
+
+}
+
+std::vector<point> addFluidParticles(QRectF fluid, double sampledistance)
+{
+    std::vector<point> to_add;
+    const double dx = sampledistance;
+    double width = fabs(fluid.width()/dx);
+    double height = fabs(fluid.height()/dx);
 
 
+    for(double j = 0; j<=height;j++){
+        for(double i = 0; i<= width;i++){
+            if(fluid.left() < fluid.right()){
+                if( fluid.bottom() < fluid.top()){
+                    to_add.push_back(point{fluid.left()+ i*dx,fluid.bottom() + j*dx});
+                }else{
+                    to_add.push_back(point{fluid.left()+ i*dx,fluid.top() + j*dx});
+                }
+            }else{
+                if( fluid.bottom() < fluid.top()){
+                    to_add.push_back(point{fluid.right()+ i*dx,fluid.bottom() + j*dx});
+                }else{
+                    to_add.push_back(point{fluid.right()+ i*dx,fluid.top() + j*dx});
+                }
+            }
+        }
+    }
+
+    return to_add;
+}
 
 
+void export_scene_to_particle_json(Scene *s, const QString &file_name)
+{
+    // convert all objects to particles in grid
+    BOOST_FOREACH(QLineF &l, s->lines) {
+        s->addParticles(addLineParticles(l,s->getSamplingDistance()),Boundary);
+    }
+    BOOST_FOREACH(QRectF &r, s->rects) {
+        s->addParticles(addRectangleParticles(r,s->getSamplingDistance()),Boundary);
+    }
+    BOOST_FOREACH(QRectF &f, s->fluid1s) {
+        s->addParticles(addFluidParticles(f,s->getSamplingDistance()),Fluid1);
+    }
+
+    // write grid in json
+    QVariantMap file;
+
+    file["scene"] = save_parameters(s);
+    file["fluid_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Fluid1);
+    file["boundary_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Boundary);
 
 
+    QJson::Serializer serializer;
+    bool ok;
+    QByteArray json = serializer.serialize(file, &ok);
+    if(!ok)
+        qWarning("Error while creating json");
 
+    QFile f(file_name);
+    f.open(QFile::WriteOnly | QFile::Truncate);
+    f.write(json);
+    f.close();
 
-
-
-
-
-
-
-
-
-
-
-
-
+    s->clearGrid();
+}
