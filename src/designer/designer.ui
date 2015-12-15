@@ -78,7 +78,7 @@
           </size>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="page_1">
           <property name="geometry">
@@ -274,7 +274,7 @@
               <item>
                <widget class="QPushButton" name="buttonBoundary">
                 <property name="text">
-                 <string>&amp;Boundary</string>
+                 <string>Boundary</string>
                 </property>
                 <property name="shortcut">
                  <string>B</string>
@@ -290,7 +290,7 @@
               <item>
                <widget class="QPushButton" name="buttonRectangle">
                 <property name="text">
-                 <string>B&amp;asin</string>
+                 <string>&amp;Basin</string>
                 </property>
                 <property name="shortcut">
                  <string>R</string>
@@ -333,8 +333,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>100</width>
-            <height>30</height>
+            <width>556</width>
+            <height>307</height>
            </rect>
           </property>
           <attribute name="label">
@@ -606,8 +606,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>100</width>
-            <height>30</height>
+            <width>556</width>
+            <height>307</height>
            </rect>
           </property>
           <attribute name="label">
@@ -626,7 +626,7 @@
             <item row="0" column="1">
              <widget class="QPushButton" name="pushButton">
               <property name="text">
-               <string>PushButton</string>
+               <string>Export</string>
               </property>
              </widget>
             </item>
@@ -646,7 +646,7 @@
             <item row="0" column="0">
              <widget class="QLabel" name="label">
               <property name="text">
-               <string>TextLabel</string>
+               <string>To Json</string>
               </property>
              </widget>
             </item>

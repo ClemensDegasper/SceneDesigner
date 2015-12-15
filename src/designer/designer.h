@@ -67,6 +67,8 @@ private slots:
 
     void on_pushButton_3_released();
 
+    void on_pushButton_released();
+
 private:
     Ui::Designer *ui;
     Scene *scene;

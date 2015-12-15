@@ -200,3 +200,10 @@ void Designer::on_pushButton_3_released()
 {
     this->scene->clear();
 }
+
+void Designer::on_pushButton_released()
+{
+    QString save_file = QFileDialog::getSaveFileName(this, tr("Save File"),
+                                                     "", tr("SPH JSON Files (*.json)"));
+    export_scene_to_particle_json(this->scene,save_file);
+}
