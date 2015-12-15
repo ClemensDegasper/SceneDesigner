@@ -184,10 +184,22 @@ public:
 
     void addParticles(const std::vector<point> &points, ParticleType type) {
         BOOST_FOREACH(const point &p, points) {
-            //qDebug() << p.x << p.y;
-            g(snap(p.x), snap(p.y)) = type;
+            int x = snap(p.x);
+            int y = snap(p.y);
+            int currentCell = g(x,y);
+            if(currentCell == None){
+                g(x, y) = type;
+            }else if(currentCell == Boundary){
+                if(type == Boundary or type == Fluid1){
+                    continue;
+                }
+            }else if (currentCell == Fluid1){
+                if(type == Boundary){
+                    g(x,y) = type;
+                }
+            }
+
         }
-        emit changed();
     }
 
     void addParticle(const point p, ParticleType type) {
@@ -234,6 +246,10 @@ public:
         while(!rects.empty()){
             rects.pop_back();
         }
+    }
+    void clearGrid(){
+        g.clear();
+        emit changed();
     }
 
     void clear() {
