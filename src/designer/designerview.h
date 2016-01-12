@@ -64,6 +64,7 @@ private:
     void drawLines();
     void drawFLuids();
     void drawRects();
+    void drawNonGridParticles();
 
     QPointF getConnectPointOfRect(QRectF r,bool left);
     QRectF isPointInRects(QPointF p);
@@ -72,6 +73,8 @@ private:
     QPointF getRectEdgePointFromMousePoint(QPointF p);
 
 
+    void drawsphlines(QLineF line);
+    void drawsphline(QLineF line);
     void addFluidParticles();
     void addRectangleParticles();
     void addLineParticles();
@@ -86,9 +89,8 @@ private:
     QRectF rectangle;
     QRectF fluid;
     QLineF line;
-
     QPointF highlightP;
-
+    double cutoffradius = 0.0;
 
 
 

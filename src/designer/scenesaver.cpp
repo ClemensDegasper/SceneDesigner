@@ -145,7 +145,8 @@ void addBoundarys(QVariantMap root, Scene *s){
     QVariantList particles = root["boundary_particles"].toList();
     for(int i = 0; i < particles.size();i++){
         point p{particles.at(i).toMap()["x"].toDouble(),particles.at(i).toMap()["y"].toDouble()};
-        s->addParticle(p,Boundary);
+        //s->addParticle(p,Boundary);
+        s->addToNonGrid(p);
     }
 
 }
@@ -220,7 +221,6 @@ void open_scene(Scene *s, const QString &file_name) {
     f.open(QFile::ReadOnly);
 
     QByteArray content = f.readAll();
-    qDebug() << content;
 
     QVariantMap root = parser.parse(content, &ok).toMap();
     if (!ok) {
@@ -238,7 +238,7 @@ void open_scene(Scene *s, const QString &file_name) {
 }
 
 
-std::vector<point> addLineParticles(QLineF l, double samplingDistance){
+std::vector<point> addLineParticlesB(QLineF l, double samplingDistance){
 
     // using the bresehnheim algorithm to draw a line between p1 and p2.
     // https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#Method
@@ -311,25 +311,90 @@ std::vector<point> addLineParticles(QLineF l, double samplingDistance){
 
 }
 
-std::vector<point> addRectangleParticles(QRectF rectangle,double sampledist)
+std::vector<point> makeSPHline(QLineF l, double samplingdistance){
+    std::vector<point> to_add;
+    double startx, starty, endx, endy, distance, step,x,y;
+
+    QPointF *p1 = new QPointF(l.p1().x(),l.p1().y());
+    QPointF *p2 = new QPointF(l.p2().x(),l.p2().y());
+
+    startx = p1->x();
+    starty = p1->y();
+    endx = p2->x();
+    endy = p2->y();
+
+    distance = sqrt(pow(endx - startx,2)+pow(endy-starty,2));
+
+
+    step = (samplingdistance / distance);
+    for(double i = 0; i <= 1; i+=step){
+        x = startx + (endx - startx) * i;
+        y = starty + (endy - starty) * i;
+        to_add.push_back(point{x,y});
+    }
+    return to_add;
+}
+
+std::vector<point> makeSPHLines(QLineF l, double samplingDistance, double cutoff){
+    std::vector<point> to_add,tmp;
+    double startx, starty, endx, endy, distance, step,x,y;
+
+    QPointF *p1 = new QPointF(l.p1().x(),l.p1().y());
+    QPointF *p2 = new QPointF(l.p2().x(),l.p2().y());
+    QLineF norm = l.normalVector();                     //get normal vector from line
+    QLineF unitvec = norm.fromPolar(samplingDistance,norm.angle());   // get create vector with sample distance length and angle from normal vector
+    QLineF perpendicularLine = l;
+    for(int i = 1; i < cutoff*100; i++){
+        perpendicularLine.setP1(QPointF(perpendicularLine.x1() + unitvec.x2(),perpendicularLine.y1()+unitvec.y2()));        // add unitvec to line to get perpedicular line
+        perpendicularLine.setP2(QPointF(perpendicularLine.x2()+unitvec.x2(),perpendicularLine.y2()+unitvec.y2()));
+        tmp = makeSPHline(perpendicularLine,samplingDistance);
+        to_add.insert(std::end(to_add),std::begin(tmp),std::end(tmp));
+    }
+    startx = p1->x();
+    starty = p1->y();
+    endx = p2->x();
+    endy = p2->y();
+
+    distance = sqrt(pow(endx - startx,2)+pow(endy-starty,2));
+
+
+    step = (samplingDistance / distance);
+    for(double i = 0; i <= 1; i+=step){
+        x = startx + (endx - startx) * i;
+        y = starty + (endy - starty) * i;
+        to_add.push_back(point{x,y});
+    }
+    return to_add;
+}
+
+
+std::vector<point> addRectangleParticles(QRectF rectangle,double sampledist, double cutoffradius)
 {
     std::vector<point> to_add;
     const double dx = sampledist;
-    double width = fabs(rectangle.width()/dx);
+    double width = (rectangle.right()-rectangle.left()) / dx;//fabs(rectangle.width()/dx);
     double height = fabs(rectangle.height()/dx);
+    int extent = cutoffradius / dx;
+
+    qDebug() << rectangle.left()-cutoffradius;
+    qDebug() << rectangle.right()+cutoffradius;
+    qDebug() << width;
+    qDebug() << extent;
+         // extent bot line of basin left and right by that many particles
+    for (double j = 0; j < cutoffradius; j += dx){
+
+        for(double i = 1-extent; i< width+extent;i++){
+
+                to_add.push_back(point{rectangle.left()+ i*dx,rectangle.bottom()-j}); // bot line
+        }
 
 
-    for(double i = 0; i<= width;i++){
-            to_add.push_back(point{rectangle.left()+ i*dx,rectangle.bottom()}); // bot line
+        for(double k = 0; k<= height;k++){
+
+                to_add.push_back(point{rectangle.left()-j,rectangle.bottom()+k*dx}); // left line
+                to_add.push_back(point{rectangle.right()+j,rectangle.bottom()+k*dx}); // right line
+        }
     }
-
-
-    for(double i = 0; i<= height;i++){
-
-            to_add.push_back(point{rectangle.left(),rectangle.bottom()+i*dx}); // left line
-            to_add.push_back(point{rectangle.right(),rectangle.bottom()+i*dx}); // right line
-    }
-
     return to_add;
 
 }
@@ -368,10 +433,12 @@ void export_scene_to_particle_json(Scene *s, const QString &file_name)
 {
     // convert all objects to particles in grid
     BOOST_FOREACH(QLineF &l, s->lines) {
-        s->addParticles(addLineParticles(l,s->getSamplingDistance()),Boundary);
+        //s->addParticles(addLineParticlesB(l,s->getSamplingDistance()),Boundary);
+        //s->addParticles(makeSPHLines(l,s->getSamplingDistance(),s->getCutOffRadius()),Boundary);
+        s->addParticlesToNonGrid(makeSPHLines(l,s->getSamplingDistance(),s->getCutOffRadius()));
     }
     BOOST_FOREACH(QRectF &r, s->rects) {
-        s->addParticles(addRectangleParticles(r,s->getSamplingDistance()),Boundary);
+        s->addParticles(addRectangleParticles(r,s->getSamplingDistance(),s->getCutOffRadius()),Boundary);
     }
     BOOST_FOREACH(QRectF &f, s->fluid1s) {
         s->addParticles(addFluidParticles(f,s->getSamplingDistance()),Fluid1);
@@ -382,7 +449,7 @@ void export_scene_to_particle_json(Scene *s, const QString &file_name)
 
     file["scene"] = save_parameters(s);
     file["fluid_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Fluid1);
-    file["boundary_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Boundary);
+    file["boundary_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Boundary); // todo make nongrid particles in json
 
 
     QJson::Serializer serializer;

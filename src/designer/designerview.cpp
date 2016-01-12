@@ -45,6 +45,7 @@ DesignerView::DesignerView(QWidget *parent) :
     setMouseBinding(Qt::LeftButton, CAMERA, TRANSLATE);
     setMouseBinding(Qt::NoButton, CAMERA, ROTATE);
     setMouseBinding(Qt::NoButton, FRAME, ROTATE);
+
 }
 
 void DesignerView::setScene(Scene *scene) {
@@ -99,6 +100,8 @@ void DesignerView::draw() {
         renderHighlight();
     }
 
+
+
     // draw from grid
     glPointSize(this->pointsize);
     glBegin(GL_POINTS);
@@ -127,6 +130,7 @@ void DesignerView::draw() {
     drawLines();
     drawRects();
     drawFLuids();
+    drawNonGridParticles();
 
     //render grid
     paintGrid();
@@ -155,6 +159,18 @@ void DesignerView::drawRects(){
 
         glEnd();
     }
+}
+
+void DesignerView::drawNonGridParticles()
+{
+    // draw from non grid
+    glPointSize(this->pointsize);
+    glBegin(GL_POINTS);
+    glColor3f(boundary_color);
+    BOOST_FOREACH(const point &p, this->scene->nongrid) {
+        glVertex2d(p.x,p.y);
+    }
+    glEnd();
 }
 
 QPointF DesignerView::getConnectPointOfRect(QRectF r,bool left)
@@ -261,6 +277,62 @@ QPointF DesignerView::getRectEdgePointFromMousePoint(QPointF mouse)
     return highlightPoint;
 }
 
+void DesignerView::drawsphlines(QLineF l)
+{
+
+    double dx = this->scene->getSamplingDistance();
+    double startx, starty, endx, endy, distance, step,x,y;
+
+    QPointF *p1 = new QPointF(l.p1().x(),l.p1().y());
+    QPointF *p2 = new QPointF(l.p2().x(),l.p2().y());
+    QLineF norm = l.normalVector();                     //get normal vector from line
+    QLineF unitvec = norm.fromPolar(dx,norm.angle());   // get create vector with sample distance length and angle from normal vector
+    QLineF perpendicularLine = l;
+    for(int i = 1; i < this->scene->getCutOffRadius()*100; i++){
+        perpendicularLine.setP1(QPointF(perpendicularLine.x1() + unitvec.x2(),perpendicularLine.y1()+unitvec.y2()));        // add unitvec to line to get perpedicular line
+        perpendicularLine.setP2(QPointF(perpendicularLine.x2()+unitvec.x2(),perpendicularLine.y2()+unitvec.y2()));
+
+        drawsphline(perpendicularLine);
+    }
+    startx = p1->x();
+    starty = p1->y();
+    endx = p2->x();
+    endy = p2->y();
+
+    distance = sqrt(pow(endx - startx,2)+pow(endy-starty,2));
+
+
+    step = (this->scene->getSamplingDistance() / distance);
+    for(double i = 0; i <= 1; i+=step){
+        x = startx + (endx - startx) * i;
+        y = starty + (endy - starty) * i;
+        this->scene->addToNonGrid(point{x,y});
+    }
+}
+void DesignerView::drawsphline(QLineF l)
+{
+
+    double dx = this->scene->getSamplingDistance();
+    double startx, starty, endx, endy, distance, step,x,y;
+
+    QPointF *p1 = new QPointF(l.p1().x(),l.p1().y());
+    QPointF *p2 = new QPointF(l.p2().x(),l.p2().y());
+
+    startx = p1->x();
+    starty = p1->y();
+    endx = p2->x();
+    endy = p2->y();
+
+    distance = sqrt(pow(endx - startx,2)+pow(endy-starty,2));
+
+
+    step = (this->scene->getSamplingDistance() / distance);
+    for(double i = 0; i <= 1; i+=step){
+        x = startx + (endx - startx) * i;
+        y = starty + (endy - starty) * i;
+        this->scene->addToNonGrid(point{x,y});
+    }
+}
 
 void DesignerView::drawFLuids(){
     glLineWidth(3.0);
@@ -310,16 +382,16 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
 
     if (mode == Pan) {
 
-        qDebug() << this->scene->fluid1s.size();
-        qDebug() << this->scene->rects.size();
-        qDebug() << this->scene->lines.size();
+//        qDebug() << this->scene->fluid1s.size();
+//        qDebug() << this->scene->rects.size();
+//        qDebug() << this->scene->lines.size();
 
-        BOOST_FOREACH(const QRectF &r, this->scene->rects) {
-            qDebug() << r.topLeft().x();
-            qDebug() << r.topLeft().y();
-            qDebug() << r.bottomRight().x();
-            qDebug() << r.bottomRight().y();
-        }
+//        BOOST_FOREACH(const QRectF &r, this->scene->rects) {
+//            qDebug() << r.topLeft().x();
+//            qDebug() << r.topLeft().y();
+//            qDebug() << r.bottomRight().x();
+//            qDebug() << r.bottomRight().y();
+//        }
         QGLViewer::mousePressEvent(e);
         return;
     }
@@ -404,6 +476,7 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
             line.setP2(endpoint);
             //addLineParticles();
             this->scene->lines.push_back(line);//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
+            //drawsphlines(line);
 
         }else{
             line = QLineF(QPointF(mouse.v[0], mouse.v[1]),QPointF(mouse.v[0], mouse.v[1]));

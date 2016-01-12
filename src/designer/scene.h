@@ -112,14 +112,15 @@ struct grid {
 private:
     int width, height;
     ParticleType *particles;
+
 };
 
 class Scene : public QObject {
     Q_OBJECT
 public:
     Scene();
-
     double getSamplingDistance() const { return samplingDistance; }
+    double getCutOffRadius() const { return cutoffradius; }
     double getWidth() const { return width; }
     double getHeight() const { return height; }
     double getC() const { return c; }
@@ -133,12 +134,26 @@ public:
     double getDampingFactor() const { return dampingFactor; }
 
 
+    void addParticleToNonGrid(point p){
+        this->nongrid.push_back(p);
+    }
+
+    void addParticlesToNonGrid(const std::vector<point> &points) {
+        BOOST_FOREACH(const point &p, points) {
+            nongrid.push_back(p);
+        }
+    }
+
     void setGrid(double width, double height, double samplingDistance) {
         this->width = width;
         this->height = height;
         this->samplingDistance = samplingDistance;
         resize_grid();
         emit changed();
+    }
+
+    void setCutoffRadius(double r){
+        this->cutoffradius = r;
     }
 
     void setAccelerationX(double accelerationX) {
@@ -224,7 +239,7 @@ public:
     }
 
     const grid &const_grid = g;
-
+    std::vector<point> nongrid;
     std::vector<QRectF> rects;
     std::vector<QRectF> fluid1s;
     std::vector<QLineF> lines;
@@ -276,6 +291,7 @@ private:
     }
 
     double samplingDistance = 0.01;
+    double cutoffradius = 0.03;
     double width = 1.0, height = 1.0;
     double accelerationX = 0.0, accelerationY = 9.81;
     int neighbours = 3;

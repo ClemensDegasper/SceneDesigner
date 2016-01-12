@@ -78,7 +78,7 @@
           </size>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="page_1">
           <property name="geometry">
@@ -86,7 +86,7 @@
             <x>0</x>
             <y>0</y>
             <width>556</width>
-            <height>307</height>
+            <height>276</height>
            </rect>
           </property>
           <property name="sizePolicy">
@@ -321,7 +321,7 @@
             <item>
              <widget class="QPushButton" name="pushButton_3">
               <property name="text">
-               <string>PushButton</string>
+               <string>Clear</string>
               </property>
              </widget>
             </item>
@@ -334,7 +334,7 @@
             <x>0</x>
             <y>0</y>
             <width>556</width>
-            <height>307</height>
+            <height>276</height>
            </rect>
           </property>
           <attribute name="label">
@@ -596,22 +596,82 @@
                 </property>
                </spacer>
               </item>
+              <item row="12" column="0">
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>Cutoff Radius</string>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1">
+               <widget class="QDoubleSpinBox" name="doubleSpinBoxCutoffRadius">
+                <property name="decimals">
+                 <number>4</number>
+                </property>
+                <property name="singleStep">
+                 <double>0.100000000000000</double>
+                </property>
+                <property name="value">
+                 <double>0.300000000000000</double>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
            </layout>
           </widget>
          </widget>
          <widget class="QWidget" name="page_3">
+          <property name="label" stdset="0">
+           <string/>
+          </property>
+          <attribute name="label">
+           <string>Page 3</string>
+          </attribute>
+          <widget class="QWidget" name="gridLayoutWidget_2">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>0</y>
+             <width>491</width>
+             <height>271</height>
+            </rect>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_3">
+            <item row="0" column="0">
+             <widget class="QPushButton" name="pushButton_wizard">
+              <property name="text">
+               <string>scene generator</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <spacer name="horizontalSpacer_7">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+         <widget class="QWidget" name="page_4">
           <property name="geometry">
            <rect>
             <x>0</x>
             <y>0</y>
             <width>556</width>
-            <height>307</height>
+            <height>276</height>
            </rect>
           </property>
           <attribute name="label">
-           <string>Page 3</string>
+           <string>Page 4</string>
           </attribute>
           <widget class="QWidget" name="gridLayoutWidget">
            <property name="geometry">

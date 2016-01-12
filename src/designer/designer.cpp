@@ -20,6 +20,7 @@ Designer::Designer(QWidget *parent) :
     ui->doubleSpinBoxWidth->setValue(scene->getWidth());
     ui->doubleSpinBoxHeight->setValue(scene->getHeight());
     ui->doubleSpinBoxSamplingDistance->setValue(scene->getSamplingDistance());
+    ui->doubleSpinBoxCutoffRadius->setValue(scene->getCutOffRadius());
 
     this->addAction(ui->action_save);
     this->addAction(ui->actionNewScene);
@@ -116,6 +117,12 @@ void Designer::on_doubleSpinBoxNoSlip_editingFinished() {
     scene->setNoSlip(ui->doubleSpinBoxNoSlip->value());
 }
 
+void Designer::on_doubleSpinBoxSamplingDistance_valueChanged(double r)
+{
+    //scene->setCutoffRadius(r);
+}
+
+
 void Designer::on_action_save_triggered() {
     save();
 }
@@ -207,3 +214,4 @@ void Designer::on_pushButton_released()
                                                      "", tr("SPH JSON Files (*.json)"));
     export_scene_to_particle_json(this->scene,save_file);
 }
+
