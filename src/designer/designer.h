@@ -67,9 +67,11 @@ private slots:
 
     void on_pushButton_3_released();
 
-    void on_pushButton_released();
+    void on_pb_export_released();
 
     void on_doubleSpinBoxSamplingDistance_valueChanged(double r);
+
+    void on_pb_sample_released();
 
 private:
     Ui::Designer *ui;

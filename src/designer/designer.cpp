@@ -7,6 +7,7 @@
 #include <QTreeWidget>
 #include <QFileDialog>
 #include <QProcess>
+#include "scenesampler.h"
 
 #include <boost/foreach.hpp>
 
@@ -208,10 +209,31 @@ void Designer::on_pushButton_3_released()
     this->scene->clear();
 }
 
-void Designer::on_pushButton_released()
+void Designer::on_pb_export_released()
 {
     QString save_file = QFileDialog::getSaveFileName(this, tr("Save File"),
                                                      "", tr("SPH JSON Files (*.json)"));
     export_scene_to_particle_json(this->scene,save_file);
 }
+
+
+void Designer::on_pb_sample_released()
+{
+    SceneSampler *window = new SceneSampler(this, this->scene);
+    window->show();
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 

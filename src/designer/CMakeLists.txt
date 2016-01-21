@@ -16,7 +16,7 @@ find_package(OpenGL REQUIRED)
 include_directories(${OpenGL_INCLUDE_DIRS})
 
 
-QT4_WRAP_UI(UI_HEADERS designer.ui)
+QT4_WRAP_UI(UI_HEADERS designer.ui scenesampler.ui)
 
 FILE(GLOB SRCS *.cpp *.h)
 
