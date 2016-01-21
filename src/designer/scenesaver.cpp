@@ -146,7 +146,7 @@ void addBoundarys(QVariantMap root, Scene *s){
     for(int i = 0; i < particles.size();i++){
         point p{particles.at(i).toMap()["x"].toDouble(),particles.at(i).toMap()["y"].toDouble()};
         //s->addParticle(p,Boundary);
-        s->addToNonGrid(p);
+        s->addParticleToNonGrid(p);
     }
 
 }
@@ -427,8 +427,18 @@ std::vector<point> addFluidParticles(QRectF fluid, double sampledistance)
 
     return to_add;
 }
+QVariantList save_non_particle_list(std::vector<point> ng) {
+    QVariantList all;
 
+    BOOST_FOREACH(point &p, ng){
+        QVariantMap m;
+        m["x"] = p.v[0];
+        m["y"] = p.v[1];
+        all.append(m);
+    }
 
+    return all;
+}
 void export_scene_to_particle_json(Scene *s, const QString &file_name)
 {
     // convert all objects to particles in grid
@@ -449,7 +459,14 @@ void export_scene_to_particle_json(Scene *s, const QString &file_name)
 
     file["scene"] = save_parameters(s);
     file["fluid_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Fluid1);
-    file["boundary_particles"] = save_particle_list(s->const_grid, s->getSamplingDistance(), Boundary); // todo make nongrid particles in json
+    QVariantList constGrid = save_particle_list(s->const_grid, s->getSamplingDistance(), Boundary);
+    QVariantList nonGrid = save_non_particle_list(s->nongrid);
+
+    // add up all boundary particles in one list
+    for (int i = 0; i < nonGrid.size(); ++i) {
+        constGrid.append(nonGrid.at(i));
+    }
+    file["boundary_particles"] =  constGrid;
 
 
     QJson::Serializer serializer;
