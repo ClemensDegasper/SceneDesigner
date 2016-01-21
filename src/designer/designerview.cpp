@@ -166,7 +166,7 @@ void DesignerView::drawNonGridParticles()
     // draw from non grid
     glPointSize(this->pointsize);
     glBegin(GL_POINTS);
-    glColor3f(boundary_color);
+    glColor3f(0.0, 0.0, 0.0);
     BOOST_FOREACH(const point &p, this->scene->nongrid) {
         glVertex2d(p.x,p.y);
     }
@@ -306,7 +306,7 @@ void DesignerView::drawsphlines(QLineF l)
     for(double i = 0; i <= 1; i+=step){
         x = startx + (endx - startx) * i;
         y = starty + (endy - starty) * i;
-        this->scene->addToNonGrid(point{x,y});
+        this->scene->addParticleToNonGrid(point{x,y});
     }
 }
 void DesignerView::drawsphline(QLineF l)
@@ -330,7 +330,7 @@ void DesignerView::drawsphline(QLineF l)
     for(double i = 0; i <= 1; i+=step){
         x = startx + (endx - startx) * i;
         y = starty + (endy - starty) * i;
-        this->scene->addToNonGrid(point{x,y});
+        this->scene->addParticleToNonGrid(point{x,y});
     }
 }
 
