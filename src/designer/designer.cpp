@@ -226,14 +226,7 @@ void Designer::on_pb_sample_released()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+void Designer::on_doubleSpinBoxCutoffRadius_valueChanged(const QString &arg1)
+{
+    scene->setCutoffRadius(arg1.toDouble());
+}
