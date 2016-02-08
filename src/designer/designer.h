@@ -73,6 +73,8 @@ private slots:
 
     void on_pb_sample_released();
 
+    void on_doubleSpinBoxCutoffRadius_valueChanged(const QString &arg1);
+
 private:
     Ui::Designer *ui;
     Scene *scene;
