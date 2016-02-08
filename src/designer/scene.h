@@ -264,6 +264,7 @@ public:
     }
     void clearGrid(){
         g.clear();
+        nongrid.clear();
         emit changed();
     }
 
@@ -273,6 +274,7 @@ public:
         clearLines();
         clearRects();
         g.clear();
+        nongrid.clear();
         emit changed();
     }
 
@@ -291,7 +293,7 @@ private:
     }
 
     double samplingDistance = 0.01;
-    double cutoffradius = 0.03;
+    double cutoffradius = 0.01;
     double width = 1.0, height = 1.0;
     double accelerationX = 0.0, accelerationY = 9.81;
     int neighbours = 3;
