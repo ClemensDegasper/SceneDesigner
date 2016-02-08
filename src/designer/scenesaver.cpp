@@ -376,10 +376,6 @@ std::vector<point> addRectangleParticles(QRectF rectangle,double sampledist, dou
     double height = fabs(rectangle.height()/dx);
     int extent = cutoffradius / dx;
 
-    qDebug() << rectangle.left()-cutoffradius;
-    qDebug() << rectangle.right()+cutoffradius;
-    qDebug() << width;
-    qDebug() << extent;
          // extent bot line of basin left and right by that many particles
     for (double j = 0; j < cutoffradius; j += dx){
 
