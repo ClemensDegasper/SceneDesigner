@@ -76,6 +76,8 @@ void SceneSampler::addBasinToGui(QRectF r, int BasinCounter, int RowCounter)
 
 }
 
+
+
 QLineEdit *SceneSampler::LayoutItemToLineEdit(QLayoutItem *qli)
 {
     return qobject_cast<QLineEdit *>(qli->widget());
@@ -95,26 +97,105 @@ void SceneSampler::on_buttonBox_accepted()
         basins.append(b);
         RowCounter += 3;
     }
-    int counter = 0;
-    BOOST_FOREACH(basin b, basins){
-        QRectF r = this->s->rects.at(counter);
-        QRectF tmp=r;
-        for (double i = 0; i < b.xadd; i+=b.xstep) {
-            tmp.setRight(r.right()+i);
-            for (double j = 0; j < b.yadd; j+=b.ystep) {
-                tmp.setTop(r.top()+j);
-                qDebug() << tmp.topLeft().x()<<"/"<<tmp.topLeft().y();
-                qDebug() << tmp.bottomRight().x()<<"/"<<tmp.bottomRight().y();
+
+    std::vector<QRectF> rects = this->s->rects;
+    recLoop(rects,rects,this->s->lines,basins,0);    //first time calling recursion at pos 0
+}
+
+void SceneSampler::recLoop(std::vector<QRectF> rects,std::vector<QRectF> OriginalRects,std::vector<QLineF> OriginalLines, QList<basin> basins, int ptr)
+{
+    if(ptr == basins.size()){ // base case of recursion
+        // when basin ptr is at last basin write scene and finish remaining recursions
+        this->SampleSceneCounter ++;
+        this->s->rects = rects;
+
+        qDebug()<<"lines";
+        // check what line endpoints have to be moved
+        for(int i = 0; i < this->s->lines.size();i++) {
+            // check both ends of all lines with the top left/right of original rects
+            // and then change new lines to points of new rects
+            QLineF l = OriginalLines.at(i);
+
+            int pos = PointAtTopLeftOfRect(l.p1(), OriginalRects);
+            if(pos >= 0){
+                QRectF r = rects.at(pos);
+                l.setP1(r.topLeft());
             }
-            tmp.setTop(r.top());
+
+            pos = PointAtTopRightOfRect(l.p1(), OriginalRects);
+            if(pos >= 0){
+                QRectF r = rects.at(pos);
+                l.setP1(r.topRight());
+            }
+
+            pos = PointAtTopLeftOfRect(l.p2(), OriginalRects);
+            if(pos >= 0){
+                QRectF r = rects.at(pos);
+                l.setP2(r.topLeft());
+            }
+
+            pos = PointAtTopRightOfRect(l.p2(), OriginalRects);
+            if(pos >= 0){
+                QRectF r = rects.at(pos);
+                l.setP2(r.topRight());
+            }
+
+            //delete old and insert new line
+            this->s->lines.erase(this->s->lines.begin()+i);
+            this->s->lines.insert(this->s->lines.begin()+i,l);
         }
+        qDebug()<<"checked";
+
+        //save new scene
+        export_scene_to_particle_json(this->s,QString("sampleScene" + QString::number(this->SampleSceneCounter) + ".json"));
+        qDebug()<< "scene ";
+        BOOST_FOREACH(QRectF &r, rects) {
+            qDebug() << r.topLeft().x()<<"/"<<r.topLeft().y();
+            qDebug() << r.bottomRight().x()<<"/"<<r.bottomRight().y();
+        }
+        return;
+    }
+    // get new basins and rects
+    basin b = basins.at(ptr);
+    QRectF r = rects.at(ptr);
+    QRectF tmp = r;
+
+    // loop over widths and heights and call recursion
+    for(double i = 0; i < b.xadd; i+=b.xstep){
+        tmp.setRight(tmp.right()+i);
+        for (double j = 0; j < b.yadd; j+=b.ystep) {
+            tmp.setTop(tmp.top()+j);
+            rects.erase(rects.begin()+ptr);
+            rects.insert(rects.begin()+ptr,tmp);
+            recLoop(rects,OriginalRects,OriginalLines,basins,ptr+1);
+        }
+        tmp.setTop(r.top());
     }
 }
 
+int SceneSampler::PointAtTopLeftOfRect(QPointF p, std::vector<QRectF> OriginalRects)
+{
+    int counter = 0;
+    BOOST_FOREACH(QRectF &r, OriginalRects) {
+        if(p.rx() == r.topLeft().rx() && p.ry() == r.topLeft().ry()){
+            return counter;
+        }
+        counter++;
+    }
+    return -1;
+}
 
-
-
-
+int SceneSampler::PointAtTopRightOfRect(QPointF p, std::vector<QRectF> OriginalRects)
+{
+    int counter = 0;
+    BOOST_FOREACH(QRectF &r, OriginalRects) {
+        if(p.rx() == r.topRight().rx() && p.ry() == r.topRight().ry()){
+            return counter;
+        }
+        counter++;
+    }
+    return -1;
+}
 
 
 
