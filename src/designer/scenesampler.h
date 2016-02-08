@@ -33,8 +33,13 @@ private slots:
 private:
     Ui::SceneSampler *ui;
     void addBasinToGui(QRectF r, int BasinCounter, int RowCounter);
+    void recLoop(std::vector<QRectF> rects, std::vector<QRectF> OriginalRects, std::vector<QLineF> OriginalLines, QList<basin> basins, int ptr);
+    int PointAtTopLeftOfRect(QPointF p, std::vector<QRectF> OriginalRects);
+    int PointAtTopRightOfRect(QPointF p, std::vector<QRectF> OriginalRects);
+
     QLineEdit* LayoutItemToLineEdit(QLayoutItem *qli);
     int BasinCounter;
+    int SampleSceneCounter=0;
     Scene *s;
 };
 
