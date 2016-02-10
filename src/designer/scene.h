@@ -48,7 +48,9 @@ enum ParticleType {
     Boundary = 3,
     Pan = 4,
     Rectangle = 5,
-    Line = 6
+    Line = 6,
+    RepairCircle = 7,
+    RepairSquare = 8
 };
 
 struct grid {
