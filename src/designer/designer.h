@@ -65,15 +65,19 @@ private slots:
 
     void on_buttonLine_clicked();
 
-    void on_pushButton_3_released();
+    void on_buttonClear_released();
 
-    void on_pb_export_released();
+    void on_buttonExport_released();
 
     void on_doubleSpinBoxSamplingDistance_valueChanged(double r);
 
-    void on_pb_sample_released();
+    void on_buttonSample_released();
 
     void on_doubleSpinBoxCutoffRadius_valueChanged(const QString &arg1);
+
+    void on_buttonRepairCircle_released();
+
+    void on_buttonRepairSquare_released();
 
 private:
     Ui::Designer *ui;

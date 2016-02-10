@@ -204,12 +204,12 @@ void Designer::open() {
 
 
 
-void Designer::on_pushButton_3_released()
+void Designer::on_buttonClear_released()
 {
     this->scene->clear();
 }
 
-void Designer::on_pb_export_released()
+void Designer::on_buttonExport_released()
 {
     QString save_file = QFileDialog::getSaveFileName(this, tr("Save File"),
                                                      "", tr("SPH JSON Files (*.json)"));
@@ -217,7 +217,7 @@ void Designer::on_pb_export_released()
 }
 
 
-void Designer::on_pb_sample_released()
+void Designer::on_buttonSample_released()
 {
     SceneSampler *window = new SceneSampler(this, this->scene);
     window->show();
@@ -229,4 +229,14 @@ void Designer::on_pb_sample_released()
 void Designer::on_doubleSpinBoxCutoffRadius_valueChanged(const QString &arg1)
 {
     scene->setCutoffRadius(arg1.toDouble());
+}
+
+void Designer::on_buttonRepairCircle_released()
+{
+    ui->designer_view->setMode(RepairCircle);
+}
+
+void Designer::on_buttonRepairSquare_released()
+{
+    ui->designer_view->setMode(RepairSquare);
 }
