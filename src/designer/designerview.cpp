@@ -96,6 +96,13 @@ void DesignerView::draw() {
     if(drawingline){
         renderLine();
     }
+    if(drawingRepairCircle){
+        renderRepairCircle();
+    }
+    if(drawingRepairSquare){
+        renderRepairSquare();
+    }
+
     if(!this->highlightP.isNull()){
         renderHighlight();
     }
@@ -166,11 +173,94 @@ void DesignerView::drawNonGridParticles()
     // draw from non grid
     glPointSize(this->pointsize);
     glBegin(GL_POINTS);
-    glColor3f(0.0, 0.0, 0.0);
+    glColor3fv(boundary_color);
     BOOST_FOREACH(const point &p, this->scene->nongrid) {
         glVertex2d(p.x,p.y);
     }
     glEnd();
+}
+
+void DesignerView::renderRepairCircle()
+{
+    glColor3fv(orange);
+    glBegin(GL_LINE_LOOP);
+    for(double i = 0; i < 2 * M_PI; i += M_PI / 12)
+        glVertex2d(circleRadius.p1().x() + cos(i) * circleRadius.length(),circleRadius.p1().y() + sin(i) * circleRadius.length());
+    glEnd();
+}
+
+void DesignerView::renderRepairSquare()
+{
+//    double distance = sqrt(pow(RepairLeft.x() - RepairRight.x(),2) + pow(RepairLeft.y() - RepairRight.y(),2));
+//    QLineF line = QLineF(RepairLeft,RepairRight);
+//    QLineF norm = line.normalVector();
+//    norm.setLength(distance);
+//    QPointF move = QPointF(fabs(norm.p1().x()-norm.p2().x()),fabs(norm.p1().y()-norm.p2().y()));
+    glLineWidth(3.0);
+    glBegin(GL_LINE_LOOP);
+    glColor3fv(orange);
+    glVertex2d(RepairRect.topLeft().x(),RepairRect.topLeft().y());
+    glVertex2d(RepairRect.bottomLeft().x(),RepairRect.bottomLeft().y());
+    glVertex2d(RepairRect.bottomRight().x(),RepairRect.bottomRight().y());
+    glVertex2d(RepairRect.topRight().x(),RepairRect.topRight().y());
+    glEnd();
+
+}
+
+void DesignerView::addingNewLine(QLineF l)
+{
+    // check if line is connected to topright edge of basin and then adjust it
+    // + cutoff radius because wall is that big
+    QPointF tmp = QPointF(this->scene->getCutOffRadius()-this->scene->getSamplingDistance(),0);
+    BOOST_FOREACH(const QRectF &r, this->scene->rects){
+        if(l.p1().rx() == r.topRight().rx() && l.p1().ry() == r.topRight().ry()){
+            l.setP1(l.p1()+tmp);
+            break;
+        }
+        if(l.p2().rx() == r.topRight().rx() && l.p2().ry() == r.topRight().ry()){
+            l.setP2(l.p2()+tmp);
+            break;
+        }
+        if(l.p1().rx() == r.topLeft().rx() && l.p1().ry() == r.topLeft().ry()){
+            l.setP1(l.p1()-tmp);
+            break;
+        }
+        if(l.p2().rx() == r.topLeft().rx() && l.p2().ry() == r.topLeft().ry()){
+            l.setP2(l.p2()-tmp);
+            break;
+        }
+    }
+    qDebug()<<l.angle();
+    this->scene->lines.push_back(l);
+}
+
+void DesignerView::fillRepairRect()
+{
+    int savecounter = 0;
+    double xmin,xmax,ymin,ymax;
+    double dx = this->scene->getSamplingDistance();
+    if(RepairRect.left() < RepairRect.right()){
+        xmin = RepairRect.left();
+        xmax = RepairRect.right();
+    }else{
+        xmin = RepairRect.right();
+        xmax = RepairRect.left();
+    }
+    if(RepairRect.bottom() < RepairRect.top()){
+        ymin = RepairRect.bottom();
+        ymax = RepairRect.top();
+    }else{
+        ymin = RepairRect.top();
+        ymax = RepairRect.bottom();
+    }
+    for(double x = xmin; x <= xmax; x+=dx){
+        for(double y = ymin; y <= ymax; y+=dx){
+            this->scene->nongrid.push_back(point{snap(x,dx),snap(y,dx)});
+            savecounter++;
+            if(savecounter > 1000)
+                return;
+        }
+    }
 }
 
 QPointF DesignerView::getConnectPointOfRect(QRectF r,bool left)
@@ -461,6 +551,41 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
     }
     */
 
+    if(mode == RepairCircle && e->button() == Qt::LeftButton){
+        if(drawingRepairCircle){
+            int counter = 0;
+            // adds all up in list, remove from nongrid
+            for(int i = this->scene->nongrid.size()-1; i >= 0; i--){
+                point p = this->scene->nongrid.at(i);
+                if(isParticleInCircle(p,this->circleRadius)){
+                    counter ++;
+                    this->scene->nongrid.erase(this->scene->nongrid.begin()+i);
+                }
+            }
+            distributeParticles(500,this->circleRadius);
+        }else{
+            circleRadius = QLineF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
+        drawingRepairCircle = !drawingRepairCircle;
+    }
+
+    if(mode == RepairSquare && e->button() == Qt::LeftButton){
+        if(drawingRepairSquare){
+            // remove all particles in drawn repairsquare from nongrid
+            for(int i = this->scene->nongrid.size()-1; i >= 0; i--){
+                point p = this->scene->nongrid.at(i);
+                if(RepairRect.contains(QPointF(p.x,p.y))){
+                    this->scene->nongrid.erase(this->scene->nongrid.begin()+i);
+                }
+            }
+            // add new better ones
+            fillRepairRect();
+        }else{
+            RepairRect = QRectF(QPointF(realMouse.v[0],realMouse.v[1]),QPointF(realMouse.v[0],realMouse.v[1]));
+        }
+        drawingRepairSquare= !drawingRepairSquare;
+    }
+
     if(mode == Line && e->button() == Qt::LeftButton){
         if(drawingline){
             // Check if end line is in rects
@@ -475,7 +600,8 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
             //else set mousepoint as p2 of line
             line.setP2(endpoint);
             //addLineParticles();
-            this->scene->lines.push_back(line);//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
+            addingNewLine(line);
+            //this->scene->lines.push_back(line);//line->p1().x(),line->p1().y(),line->p2().x(),line->p2().y()));
             //drawsphlines(line);
 
         }else{
@@ -547,12 +673,27 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
 
 void DesignerView::mouseMoveEvent(QMouseEvent *e) {
     mouse = toWorld(e);
+    realMouse = toWorld(e,false);
     updateGL();
 
     if (mode == Pan) {
         QGLViewer::mouseMoveEvent(e);
         return;
     }
+
+    if(mode == RepairCircle){
+        if(drawingRepairCircle){
+            circleRadius.setP2(QPointF(mouse.v[0],mouse.v[1]));
+            qDebug()<<circleRadius.length();
+        }
+    }
+
+    if(mode == RepairSquare){
+        if(drawingRepairSquare){
+            RepairRect.setBottomLeft(QPointF(realMouse.v[0],realMouse.v[1]));
+        }
+    }
+
     if(mode == Line){
         if(drawingline){
             line.setP2(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
@@ -589,6 +730,17 @@ point DesignerView::toWorld(QMouseEvent *e) {
     double dx = scene->getSamplingDistance();
 
     return snap_point(world.x, world.y, dx);
+}
+point DesignerView::toWorld(QMouseEvent *e, bool useSnap){
+    makeCurrent();
+    qglviewer::Vec screen(e->posF().x(), e->posF().y(), 0.0);
+    qglviewer::Vec world = camera()->unprojectedCoordinatesOf(screen);
+
+    double dx = scene->getSamplingDistance();
+    if(useSnap)
+        return snap_point(world.x, world.y, dx);
+    else
+        return point{world.x,world.y};
 }
 
 void DesignerView::sceneUpdated() {    
@@ -797,6 +949,23 @@ void DesignerView::addLineParticles(){
 
 }
 
+void DesignerView::distributeParticles(int n, QLineF circle)
+{
+    //distributing the particle via sunflower head algorithm
+    //http://stackoverflow.com/questions/28567166/uniformly-distribute-x-points-inside-a-circle
+
+    double alpha = 0.1;
+    double b = round(alpha*sqrt(n));      //% number of boundary points
+    double phi = (sqrt(5)+1)/2;           //% golden ratio
+    for(int i = 1; i < n; i++){
+            double r = calcRadiusForRepair(i,n,b);
+            double theta = 2*M_PI*i/pow(phi,2);
+            this->scene->nongrid.push_back(point{circle.p1().x() + r * cos(theta),circle.p1().y() + r * sin(theta)});
+    }
+
+
+}
+
 /*
 bool DesignerView::savePolygon(polygon *b, ParticleType type) {
     switch (type) {
@@ -873,6 +1042,23 @@ bool DesignerView::addParticle(const point &around, int size, ParticleType type)
         }
     }
     scene->addParticles(to_add, type);
+}
+
+bool DesignerView::isParticleInCircle(point p, QLineF circle)
+{
+    double dist = pow((circle.p1().x() - p.x),2) + pow((circle.p1().y() - p.y),2);
+    return dist <= pow(circle.length(),2);
+}
+
+double DesignerView::calcRadiusForRepair(int i, int n, double b)
+{
+    double r;
+    if(i>n-b){
+        r = 1;            // put on the boundary
+    }else{
+        r = sqrt(i-1/2)/sqrt(n-(b+1)/2);     // apply square root
+    }
+
 }
 
 void DesignerView::paintGrid() {
