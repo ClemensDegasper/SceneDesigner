@@ -99,62 +99,42 @@ void SceneSampler::on_buttonBox_accepted()
     }
 
     std::vector<QRectF> rects = this->s->rects;
-    recLoop(rects,rects,this->s->lines,basins,0);    //first time calling recursion at pos 0
+    recLoop(rects,rects,this->s->lines,basins,this->s->fluid1s,0);    //first time calling recursion at pos 0
 }
 
-void SceneSampler::recLoop(std::vector<QRectF> rects,std::vector<QRectF> OriginalRects,std::vector<QLineF> OriginalLines, QList<basin> basins, int ptr)
+void SceneSampler::recLoop(std::vector<QRectF> rects,std::vector<QRectF> OriginalRects,std::vector<QLineF> OriginalLines, QList<basin> basins,std::vector<QRectF> fluids, int ptr)
 {
     if(ptr == basins.size()){ // base case of recursion
         // when basin ptr is at last basin write scene and finish remaining recursions
         this->SampleSceneCounter ++;
         this->s->rects = rects;
 
-        qDebug()<<"lines";
         // check what line endpoints have to be moved
         for(int i = 0; i < this->s->lines.size();i++) {
-            // check both ends of all lines with the top left/right of original rects
-            // and then change new lines to points of new rects
+
             QLineF l = OriginalLines.at(i);
+            l = adjustLineToNewRects(rects,OriginalRects,l);
 
-            int pos = PointAtTopLeftOfRect(l.p1(), OriginalRects);
-            if(pos >= 0){
-                QRectF r = rects.at(pos);
-                l.setP1(r.topLeft());
-            }
-
-            pos = PointAtTopRightOfRect(l.p1(), OriginalRects);
-            if(pos >= 0){
-                QRectF r = rects.at(pos);
-                l.setP1(r.topRight());
-            }
-
-            pos = PointAtTopLeftOfRect(l.p2(), OriginalRects);
-            if(pos >= 0){
-                QRectF r = rects.at(pos);
-                l.setP2(r.topLeft());
-            }
-
-            pos = PointAtTopRightOfRect(l.p2(), OriginalRects);
-            if(pos >= 0){
-                QRectF r = rects.at(pos);
-                l.setP2(r.topRight());
-            }
 
             //delete old and insert new line
             this->s->lines.erase(this->s->lines.begin()+i);
             this->s->lines.insert(this->s->lines.begin()+i,l);
         }
-        qDebug()<<"checked";
+
+        // check what fluids have to be changed
+        for(int i = 0; i < fluids.size(); i++){
+            QRectF f = fluids.at(i);
+            f = adjustFluidsToNewRects(rects,OriginalRects,f);
+            this->s->fluid1s.erase(this->s->fluid1s.begin()+i);
+            this->s->fluid1s.insert(this->s->fluid1s.begin()+i,f);
+        }
 
         //save new scene
         export_scene_to_particle_json(this->s,QString("sampleScene" + QString::number(this->SampleSceneCounter) + ".json"));
-        qDebug()<< "scene ";
-        BOOST_FOREACH(QRectF &r, rects) {
-            qDebug() << r.topLeft().x()<<"/"<<r.topLeft().y();
-            qDebug() << r.bottomRight().x()<<"/"<<r.bottomRight().y();
-        }
         return;
     }
+
+    // if not base case
     // get new basins and rects
     basin b = basins.at(ptr);
     QRectF r = rects.at(ptr);
@@ -167,7 +147,7 @@ void SceneSampler::recLoop(std::vector<QRectF> rects,std::vector<QRectF> Origina
             tmp.setTop(tmp.top()+j);
             rects.erase(rects.begin()+ptr);
             rects.insert(rects.begin()+ptr,tmp);
-            recLoop(rects,OriginalRects,OriginalLines,basins,ptr+1);
+            recLoop(rects,OriginalRects,OriginalLines,basins,fluids,ptr+1);
         }
         tmp.setTop(r.top());
     }
@@ -195,6 +175,52 @@ int SceneSampler::PointAtTopRightOfRect(QPointF p, std::vector<QRectF> OriginalR
         counter++;
     }
     return -1;
+}
+
+QLineF SceneSampler::adjustLineToNewRects(std::vector<QRectF> rects, std::vector<QRectF> OriginalRects, QLineF l)
+{
+    // check both ends of all lines with the top left/right of original rects
+    // and then change new lines to points of new rects
+    int pos = PointAtTopLeftOfRect(l.p1(), OriginalRects);
+    if(pos >= 0){
+        QRectF r = rects.at(pos);
+        l.setP1(r.topLeft());
+    }
+
+    pos = PointAtTopRightOfRect(l.p1(), OriginalRects);
+    if(pos >= 0){
+        QRectF r = rects.at(pos);
+        l.setP1(r.topRight());
+    }
+
+    pos = PointAtTopLeftOfRect(l.p2(), OriginalRects);
+    if(pos >= 0){
+        QRectF r = rects.at(pos);
+        l.setP2(r.topLeft());
+    }
+
+    pos = PointAtTopRightOfRect(l.p2(), OriginalRects);
+    if(pos >= 0){
+        QRectF r = rects.at(pos);
+        l.setP2(r.topRight());
+    }
+    return l;
+}
+
+QRectF SceneSampler::adjustFluidsToNewRects(std::vector<QRectF> rects, std::vector<QRectF> OriginalRects, QRectF f)
+{
+    // checks if and in what rect the fluid is
+    // then changes left and right border of fluid
+    for (int i = 0; i < OriginalRects.size(); i++) {
+        QRectF r = OriginalRects.at(i);
+        if(r.contains(f.center()))
+        {
+            QRectF newr = rects.at(i);
+            f.setRight(newr.right());
+            f.setLeft(newr.left());
+        }
+    }
+    return f;
 }
 
 
