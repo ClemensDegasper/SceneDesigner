@@ -364,6 +364,7 @@ std::vector<point> makeSPHLines(QLineF l, double samplingDistance, double cutoff
         y = starty + (endy - starty) * i;
         to_add.push_back(point{x,y});
     }
+
     return to_add;
 }
 
@@ -444,7 +445,8 @@ void export_scene_to_particle_json(Scene *s, const QString &file_name)
         s->addParticlesToNonGrid(makeSPHLines(l,s->getSamplingDistance(),s->getCutOffRadius()));
     }
     BOOST_FOREACH(QRectF &r, s->rects) {
-        s->addParticles(addRectangleParticles(r,s->getSamplingDistance(),s->getCutOffRadius()),Boundary);
+        //s->addParticles(addRectangleParticles(r,s->getSamplingDistance(),s->getCutOffRadius()),Boundary);
+        s->addParticlesToNonGrid(addRectangleParticles(r,s->getSamplingDistance(),s->getCutOffRadius()));
     }
     BOOST_FOREACH(QRectF &f, s->fluid1s) {
         s->addParticles(addFluidParticles(f,s->getSamplingDistance()),Fluid1);
