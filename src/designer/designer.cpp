@@ -2,13 +2,13 @@
 #include "ui_designer.h"
 #include <QShortcut>
 #include "scenesaver.h"
-
+#include <QSlider>
 #include <QDebug>
 #include <QTreeWidget>
 #include <QFileDialog>
 #include <QProcess>
 #include "scenesampler.h"
-
+#include <QMouseEvent>
 #include <boost/foreach.hpp>
 
 Designer::Designer(QWidget *parent) :
@@ -31,6 +31,9 @@ Designer::Designer(QWidget *parent) :
     this->addAction(ui->actionAddBoundary);
     this->addAction(ui->actionAddPhase1);
     this->addAction(ui->actionAddPhase2);
+
+    connect(this->ui->SceneSlider, SIGNAL(valueChanged(int)), this, SLOT(SliderValue(int)));
+
 }
 
 Designer::~Designer() {
@@ -219,9 +222,8 @@ void Designer::on_buttonExport_released()
 
 void Designer::on_buttonSample_released()
 {
-    SceneSampler *window = new SceneSampler(this, this->scene);
+    SceneSampler *window = new SceneSampler(this, this->scene,this->ui->SceneSlider);
     window->show();
-
 }
 
 
@@ -239,4 +241,62 @@ void Designer::on_buttonRepairCircle_released()
 void Designer::on_buttonRepairSquare_released()
 {
     ui->designer_view->setMode(RepairSquare);
+}
+
+void Designer::SliderValue(int pos)
+{
+    this->ui->lblSceneCounter->setText("Scenes: " + QString::number(this->ui->SceneSlider->maximum()));
+    QString open_file = "sampleScene" + QString::number(pos) + ".json";
+
+    this->scene->clear();
+    if (!open_file.isEmpty()) {
+        open_scene(this->scene, open_file);
+        qDebug()<< "opening " + open_file;
+    }else{
+        qDebug()<< open_file + " is empty";
+    }
+
+//    QMouseEvent* evt = new QMouseEvent(QEvent::MouseButtonPress,
+//    this->rect().center(),Qt::LeftButton, Qt::LeftButton,Qt::NoModifier);
+//    this->mouseMoveEvent(evt);
+    this->ui->designer_view->update();
+}
+
+void Designer::on_buttonPolygon_released()
+{
+    this->scene->Sim = new LenJonSim();
+    ui->designer_view->setMode(RepairPoly);
+}
+
+void Designer::on_buttonConvert_released()
+{
+    QString name = QString("tmp.json");
+    export_scene_to_particle_json(this->scene,name);
+    this->scene->clear();
+    open_scene(this->scene,name);
+    this->ui->designer_view->update();
+}
+
+void Designer::on_buttonClearSim_released()
+{
+    if(this->scene->Sim != 0)
+        this->scene->Sim->clear();
+    this->ui->designer_view->update();
+}
+
+void Designer::on_buttonFinish_released()
+{
+    this->scene->LJSimulationFinished();
+}
+
+
+
+void Designer::on_buttonInflow_released()
+{
+    this->ui->designer_view->setMode(PlaceInFlow);
+}
+
+void Designer::on_buttonOutflow_released()
+{
+    this->ui->designer_view->setMode(PlaceOutFlow);
 }

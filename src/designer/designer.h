@@ -79,6 +79,23 @@ private slots:
 
     void on_buttonRepairSquare_released();
 
+    void SliderValue(int pos);
+
+
+
+    void on_buttonPolygon_released();
+
+    void on_buttonConvert_released();
+
+    void on_buttonClearSim_released();
+
+    void on_buttonFinish_released();
+
+
+    void on_buttonInflow_released();
+
+    void on_buttonOutflow_released();
+
 private:
     Ui::Designer *ui;
     Scene *scene;
