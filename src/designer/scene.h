@@ -8,6 +8,7 @@
 #include <boost/foreach.hpp>
 #include <QRectF>
 #include <QLineF>
+#include "lenjonsim.h"
 
 union point {
     struct {
@@ -49,8 +50,11 @@ enum ParticleType {
     Pan = 4,
     Rectangle = 5,
     Line = 6,
-    RepairCircle = 7,
-    RepairSquare = 8
+    RepairSquare = 7,
+    RepairCircle = 11,
+    RepairPoly = 8,
+    PlaceInFlow = 9,
+    PlaceOutFlow = 10
 };
 
 struct grid {
@@ -135,7 +139,8 @@ public:
     double getAccelerationY() const { return accelerationY; }
     double getDampingFactor() const { return dampingFactor; }
 
-
+    void LJSimulationFinished();
+    
     void addParticleToNonGrid(point p){
         this->nongrid.push_back(p);
     }
@@ -245,6 +250,9 @@ public:
     std::vector<QRectF> rects;
     std::vector<QRectF> fluid1s;
     std::vector<QLineF> lines;
+    std::vector<polygon> polys;
+    LenJonSim *Sim = 0;
+
 
     void clearFluids(){
         while(!fluid1s.empty()){
@@ -264,11 +272,22 @@ public:
             rects.pop_back();
         }
     }
+    void clearPolys(){
+        while(!polys.empty()){
+            polys.pop_back();
+        }
+    }
     void clearGrid(){
         g.clear();
         nongrid.clear();
         emit changed();
     }
+
+    void clearSimulation(){
+        if(this->Sim != 0)
+            this->Sim->clear();
+    }
+
 
     void clear() {
 
@@ -277,6 +296,8 @@ public:
         clearRects();
         g.clear();
         nongrid.clear();
+        clearPolys();
+        clearSimulation();
         emit changed();
     }
 
@@ -295,7 +316,7 @@ private:
     }
 
     double samplingDistance = 0.01;
-    double cutoffradius = 0.01;
+    double cutoffradius = 0.03;
     double width = 1.0, height = 1.0;
     double accelerationX = 0.0, accelerationY = 9.81;
     int neighbours = 3;
