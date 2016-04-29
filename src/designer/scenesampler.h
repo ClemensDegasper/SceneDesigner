@@ -6,6 +6,7 @@
 #include "QRectF"
 #include "QLayoutItem"
 #include "QLineEdit"
+#include <QSlider>
 
 
 struct basin{
@@ -24,8 +25,9 @@ class SceneSampler : public QDialog
     Q_OBJECT
 
 public:
-    explicit SceneSampler(QWidget *parent = 0, Scene *s = 0);
+    explicit SceneSampler(QWidget *parent = 0, Scene *s = 0,QSlider *slider = 0);
     ~SceneSampler();
+    int getSampleSceneCounter();
 
 private slots:
     void on_buttonBox_accepted();
@@ -43,6 +45,7 @@ private:
     int BasinCounter;
     int SampleSceneCounter=0;
     Scene *s;
+    QSlider *slider;
 };
 
 #endif // SCENESAMPLER_H

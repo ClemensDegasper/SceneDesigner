@@ -5,12 +5,14 @@
 #include "QLineEdit"
 #include "scenesaver.h"
 
-SceneSampler::SceneSampler(QWidget *parent, Scene *s) :
+SceneSampler::SceneSampler(QWidget *parent, Scene *s, QSlider *slider) :
     QDialog(parent),
     ui(new Ui::SceneSampler)
 {
+
     ui->setupUi(this);
     this->s = s;
+    this->slider = slider;
     if(this->s->rects.size() == 0){
         QLabel *lbl = new QLabel(this);
         lbl->setText("No Basins found in Scene.");
@@ -31,7 +33,13 @@ SceneSampler::SceneSampler(QWidget *parent, Scene *s) :
 
 SceneSampler::~SceneSampler()
 {
+    qDebug()<<this->SampleSceneCounter;
     delete ui;
+}
+
+int SceneSampler::getSampleSceneCounter()
+{
+    return this->SampleSceneCounter;
 }
 
 void SceneSampler::addBasinToGui(QRectF r, int BasinCounter, int RowCounter)
@@ -100,6 +108,12 @@ void SceneSampler::on_buttonBox_accepted()
 
     std::vector<QRectF> rects = this->s->rects;
     recLoop(rects,rects,this->s->lines,basins,this->s->fluid1s,0);    //first time calling recursion at pos 0
+
+    // when done with creating scene, set slider
+    this->slider->setTickInterval(1);
+    this->slider->setTickPosition(QSlider::TicksBothSides);
+    this->slider->setMaximum(this->SampleSceneCounter);
+    this->slider->setMinimum(1);
 }
 
 void SceneSampler::recLoop(std::vector<QRectF> rects,std::vector<QRectF> OriginalRects,std::vector<QLineF> OriginalLines, QList<basin> basins,std::vector<QRectF> fluids, int ptr)
