@@ -404,8 +404,8 @@ std::vector<point> addFluidParticles(QRectF fluid, double sampledistance)
     double height = fabs(fluid.height()/dx);
 
 
-    for(double j = 0; j<=height;j++){
-        for(double i = 0; i<= width;i++){
+    for(double j = 1; j<height;j++){        // starting loops at 1 so edges are nice
+        for(double i = 1; i< width;i++){
             if(fluid.left() < fluid.right()){
                 if( fluid.bottom() < fluid.top()){
                     to_add.push_back(point{fluid.left()+ i*dx,fluid.bottom() + j*dx});
