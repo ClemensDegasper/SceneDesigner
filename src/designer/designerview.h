@@ -5,6 +5,7 @@
 #include "scene.h"
 
 class QMouseEvent;
+class QKeyEvent;
 class Designer;
 
 class DesignerView : public QGLViewer {
@@ -34,6 +35,7 @@ public:
 
     void mousePressEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
+    void keyPressEvent(QKeyEvent *e);
     void wheelEvent(QWheelEvent *e);
     void mouseReleaseEvent(QMouseEvent *e) {
         down = false;
@@ -61,15 +63,20 @@ private:
     void renderFluid();
     void renderLine();
     void renderHighlight();
+    void renderInFlow();
+    void renderFlows();
 
+    void drawPolygons();
     void drawLines();
     void drawFLuids();
     void drawRects();
     void drawNonGridParticles();
+    void drawSimParticles();
     void renderRepairCircle();
     void renderRepairSquare();
     void addingNewLine(QLineF l);
     void fillRepairRect();
+    QImage loadTexture(char *filename, GLuint &textureID);
 
     QPointF getConnectPointOfRect(QRectF r,bool left);
     QRectF isPointInRects(QPointF p);
@@ -107,6 +114,9 @@ private:
     double cutoffradius = 0.0;
 
 
+    GLuint inFlow;
+    point pInFlow;
+    point pOutFlow;
 
     /*
     std::vector<polygon> fluid1Polygons;

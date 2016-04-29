@@ -4,6 +4,7 @@
 
 #include <QMouseEvent>
 #include <QDebug>
+#include <QApplication>
 #include <cmath>
 #include <boost/foreach.hpp>
 
@@ -46,6 +47,8 @@ DesignerView::DesignerView(QWidget *parent) :
     setMouseBinding(Qt::NoButton, CAMERA, ROTATE);
     setMouseBinding(Qt::NoButton, FRAME, ROTATE);
 
+    //loadTexture("/home/clemens/Pictures/designer.png",inFlow);
+
 }
 
 void DesignerView::setScene(Scene *scene) {
@@ -67,10 +70,12 @@ void DesignerView::init() {
 
 void DesignerView::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
+    //renderInFlow();
 
     //render snapped mouse position
     glColor3fv(white);
     drawText(40, 40, QString("%1, %2").arg(mouse.x).arg(mouse.y));
+
 
     //render scene borders
     glLineWidth(3);
@@ -133,14 +138,22 @@ void DesignerView::draw() {
     }
     glEnd();
 
+
     //draw from objects
     drawLines();
     drawRects();
     drawFLuids();
     drawNonGridParticles();
+    drawPolygons();
+    if(mode == RepairPoly)
+        drawSimParticles();
+
+
 
     //render grid
     paintGrid();
+    renderFlows();
+
 }
 
 void DesignerView::drawRects(){
@@ -178,6 +191,19 @@ void DesignerView::drawNonGridParticles()
         glVertex2d(p.x,p.y);
     }
     glEnd();
+}
+
+void DesignerView::drawSimParticles()
+{
+    // draw lennard jones particles
+    glPointSize(this->pointsize);
+    glBegin(GL_POINTS);
+    glColor3fv(boundary_color);
+    for(int i = 0; i<this->scene->Sim->N;i++){
+        glVertex2d(this->scene->Sim->x[i],this->scene->Sim->y[i]);
+    }
+    glEnd();
+
 }
 
 void DesignerView::renderRepairCircle()
@@ -261,6 +287,26 @@ void DesignerView::fillRepairRect()
                 return;
         }
     }
+}
+
+QImage DesignerView::loadTexture(char *filename, GLuint &textureID)
+{
+    glEnable(GL_TEXTURE_2D); // Enable texturing
+    glGenTextures(1, &textureID); // Obtain an id for the texture
+    glBindTexture(GL_TEXTURE_2D, textureID); // Set as the current texture
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+
+    QImage im(filename);
+    QImage tex = QGLWidget::convertToGLFormat(im);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex.width(), tex.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tex.bits());
+
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+
+    glDisable(GL_TEXTURE_2D);
+    return tex;
 }
 
 QPointF DesignerView::getConnectPointOfRect(QRectF r,bool left)
@@ -515,41 +561,86 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         updateGL();
         return;
     }
-    /*
-    if (e->button() == Qt::RightButton) {
+
+
+    if (mode == RepairPoly && e->button() == Qt::RightButton && QApplication::keyboardModifiers() == Qt::ControlModifier) {
+        // adding last point to polygon
+        // setting last point also as first point to close it
+        // adding polygon to poly vector
         if (drawingPolygon) {
-            if (mode == (Boundary || Fluid1 || Fluid2)) {
-                current_polygon->points.push_back(current_polygon->points.at(0));
-                savePolygon(current_polygon, mode);
-                addPolygonalParticles(current_polygon, mode);
-            }
-            delete current_polygon;
+            current_polygon->points.push_back(current_polygon->points.at(0));
+            this->scene->polys.push_back(*current_polygon);
             drawingPolygon = false;
-            return;
-        } else {
-            if (mode == Fluid1 || mode == Fluid2 || mode == Boundary || mode == None ) {
-                addParticle(mouse, size, mode);
+
+
+            // using cgal polygon for boundry test
+            polygon poly = this->scene->polys.at(0);             // our "normal" polygon
+            Polygon Pgn;                            // cgal polygon
+
+            if(poly.first() == poly.last()) {
+                poly.points.pop_back();
             }
+
+            BOOST_FOREACH(const point &b, poly.points) {
+                Pgn.push_back(Point(b.x, b.y));         // fill cgal poly from our own points
+            }
+
+
+            for(int i = this->scene->nongrid.size()-1; i >= 0; i--){
+                point p = this->scene->nongrid.at(i);   //our "normal" point
+                Point cp(p.v[0],p.v[1]);                // cgal point
+
+                // erase particle if they are inside polygon
+                if(Pgn.bounded_side(cp) == CGAL::ON_BOUNDED_SIDE){
+                    this->scene->nongrid.erase(this->scene->nongrid.begin()+i);
+                }
+            }
+            // draw outlines of polygon
+
+            //line from last point to first
+            point p1 = poly.points.at(poly.points.size()-1);
+            point p2 = poly.points.at(0);
+            qDebug()<<p1.v[0] << p1.v[1];
+            QLineF l = QLineF(p1.v[0],p1.v[1],p2.v[0],p2.v[1]);
+            this->scene->Sim->addline(l,this->scene->getSamplingDistance());
+
+            //all other lines
+            for(int i = 1; i<poly.points.size();i++){
+                point p1 = poly.points.at(i-1);
+                point p2 = poly.points.at(i);
+                QLineF l = QLineF(p1.v[0],p1.v[1],p2.v[0],p2.v[1]);
+                this->scene->Sim->addline(l,this->scene->getSamplingDistance());
+            }
+            this->scene->polys.clear();
+            return;
         }
     }
 
-    if ((mode == Fluid1 || mode == Fluid2 || mode == Boundary)
-            && e->button() == Qt::LeftButton
-            && drawingPolygon) {
+
+
+
+    // adding point to poly
+    if ((mode == RepairPoly) && e->button() == Qt::LeftButton && drawingPolygon && QApplication::keyboardModifiers() == Qt::ControlModifier) {
         current_polygon->points.push_back(mouse);
         updateGL();
         return;
     }
 
 
-    if ((mode == Fluid1 || mode == Fluid2 || mode == Boundary) && e->button() == Qt::LeftButton && !drawingPolygon) {
+    // first click of poly
+    if ((mode == RepairPoly) && e->button() == Qt::LeftButton && !drawingPolygon && QApplication::keyboardModifiers() == Qt::ControlModifier) {
         drawingPolygon = true;
         current_polygon = new polygon;
         current_polygon->points.push_back(mouse);
+        current_polygon->points.push_back(mouse); // adding two points because mouse move event doesnt add point but alters last one
         updateGL();
         return;
     }
-    */
+
+    if(mode == RepairPoly && e->button() == Qt::LeftButton && !drawingPolygon){
+        this->scene->Sim->addParticle(realMouse.v[0],realMouse.v[1]);
+        return;
+    }
 
     if(mode == RepairCircle && e->button() == Qt::LeftButton){
         if(drawingRepairCircle){
@@ -642,6 +733,7 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         updateGL();
         return;
     }
+    /*
     if(mode == Fluid2 && e->button() == Qt::LeftButton){
         if(drawingfluid){
             fluid.setBottomRight(QPointF(mouse.v[0], mouse.v[1]));
@@ -653,7 +745,7 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         updateGL();
         return;
     }
-
+    */
     if(mode == Rectangle && e->button() == Qt::LeftButton) {
         if(drawingRectangle){
             QPointF firstClick = rectangle.topLeft();
@@ -669,6 +761,14 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         return;
     }
 
+
+    if(mode == PlaceInFlow){
+        this->pInFlow = point{e->x(),e->y()};//mouse.v[0],mouse.v[1]};
+    }
+
+    if(mode == PlaceOutFlow){
+        this->pOutFlow = point{e->x(),e->y()};//mouse.v[0],mouse.v[1]};
+    }
 }
 
 void DesignerView::mouseMoveEvent(QMouseEvent *e) {
@@ -676,6 +776,13 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
     realMouse = toWorld(e,false);
     updateGL();
 
+    if(mode == RepairPoly && QApplication::keyboardModifiers() == Qt::ControlModifier){
+        if(drawingPolygon){
+            current_polygon->last() = realMouse;
+            return;
+        }
+
+    }
     if (mode == Pan) {
         QGLViewer::mouseMoveEvent(e);
         return;
@@ -719,6 +826,20 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
             addParticle(mouse, size, mode);
         if(mode == None)        //continously deleting particles
             addParticle(mouse, 2, mode);
+    }
+}
+
+void DesignerView::keyPressEvent(QKeyEvent *e)
+{
+    if(mode == RepairPoly && e->key() == Qt::Key_S){
+        this->scene->Sim->takeStep();
+        updateGL();
+        return;
+    }
+    if(mode == RepairPoly && e->key() == Qt::Key_I){
+        this->scene->Sim->computeAccelerations();
+        updateGL();
+        return;
     }
 }
 
@@ -806,6 +927,52 @@ void DesignerView::renderHighlight()
     glColor3fv(green);
     glVertex2f(this->highlightP.x(),this->highlightP.y());
     glEnd();
+}
+
+void DesignerView::renderInFlow()
+{
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, inFlow);
+
+    glBegin(GL_QUADS);
+
+        glTexCoord2f(0,0); glVertex2f(0, 0);
+        glTexCoord2f(0.05,0); glVertex2f(0.05, 0);
+        glTexCoord2f(0.05,0.05); glVertex2f(0.05, 0.05);
+        glTexCoord2f(0,0.05); glVertex2f(0, 0.05);
+
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
+}
+
+void DesignerView::renderFlows()
+{
+    glColor3f(0,0,0);
+    drawText(this->pOutFlow.v[0], this->pOutFlow.v[1], QString("OutFlow"));
+    drawText(this->pInFlow.v[0], this->pInFlow.v[1], QString("InFlow"));
+}
+
+void DesignerView::drawPolygons()
+{
+    glLineWidth(3.0);
+    BOOST_FOREACH(polygon &p, this->scene->polys) {
+        glColor3fv(orange);
+        glBegin(GL_LINE_LOOP);
+            BOOST_FOREACH(const point &pt, p.points) {
+                glVertex2dv(pt.v);
+            }
+        glEnd();
+        /*
+        glBegin(GL_LINE_STRIP);
+            BOOST_FOREACH(const point &p, b.points) {
+                glVertex2dv(p.v);
+            }
+        glEnd();
+        */
+    }
 }
 
 
@@ -966,31 +1133,18 @@ void DesignerView::distributeParticles(int n, QLineF circle)
 
 }
 
-/*
 bool DesignerView::savePolygon(polygon *b, ParticleType type) {
     switch (type) {
-    case Boundary:
-        boundaryPolygons.push_back(*b);
-        qDebug() << "adding boundary";
-        renderPolygon(*b);
-        updateGL();
-        break;
-    case Fluid1:
-        fluid1Polygons.push_back(*b);
-        qDebug() << "adding fluid1";
-        renderPolygon(*b);
-        updateGL();
-        break;
     case Fluid2:
-        fluid2Polygons.push_back(*b);
-        qDebug() << "adding fluid2";
+        this->scene->polys.push_back(*b);
+        qDebug() << "adding polygon";
         renderPolygon(*b);
         updateGL();
         break;
     default:
         break;
     }
-}*/
+}
 
 bool DesignerView::addPolygonalParticles(polygon *b, ParticleType type) {
     if (b->points.size() < 2) return true;
