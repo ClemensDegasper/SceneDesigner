@@ -201,6 +201,7 @@ void Designer::open() {
     this->scene->clear();
     if (!open_file.isEmpty()) {
         open_scene(scene, open_file);
+        this->ui->designer_view->setInflow(scene->inflow);
     }
 }
 
@@ -210,6 +211,7 @@ void Designer::open() {
 void Designer::on_buttonClear_released()
 {
     this->scene->clear();
+    this->ui->designer_view->clearInflow();
 }
 
 void Designer::on_buttonExport_released()
@@ -293,10 +295,38 @@ void Designer::on_buttonFinish_released()
 
 void Designer::on_buttonInflow_released()
 {
-    this->ui->designer_view->setMode(PlaceInFlow);
+    this->ui->designer_view->setMode(InFlow);
 }
 
-void Designer::on_buttonOutflow_released()
+
+void Designer::on_buttonWallVelo_released()
 {
-    this->ui->designer_view->setMode(PlaceOutFlow);
+    this->ui->designer_view->setMode(WallVelo);
+}
+
+void Designer::on_buttonZone_released()
+{
+    this->ui->designer_view->setMode(Zones);
+}
+
+void Designer::on_buttonCounter_released()
+{
+    this->ui->designer_view->setMode(Counter);
+}
+
+void Designer::on_buttonPeriodicBoundarys_released()
+{
+    this->ui->designer_view->setMode(PeriodicWalls);
+}
+
+void Designer::on_spbVeloX_valueChanged(double arg1)
+{
+    this->ui->designer_view->setxVelo(arg1);
+    qDebug() << "drin";
+}
+
+void Designer::on_spbVelo_2_valueChanged(double arg1)
+{
+    this->ui->designer_view->setyVelo(arg1);
+    qDebug() << "Dran";
 }

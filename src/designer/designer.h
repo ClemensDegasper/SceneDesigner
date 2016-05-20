@@ -94,7 +94,19 @@ private slots:
 
     void on_buttonInflow_released();
 
-    void on_buttonOutflow_released();
+
+    void on_buttonWallVelo_released();
+
+    void on_buttonZone_released();
+
+    void on_buttonCounter_released();
+
+
+    void on_buttonPeriodicBoundarys_released();
+
+    void on_spbVeloX_valueChanged(double arg1);
+
+    void on_spbVelo_2_valueChanged(double arg1);
 
 private:
     Ui::Designer *ui;
