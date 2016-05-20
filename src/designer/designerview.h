@@ -23,6 +23,20 @@ public:
         this->mode = m;
     }
 
+    void setInflow(QLineF l){
+        this->InFlowLine = l;
+    }
+    void clearInflow(){
+        this->InFlowLine.setLength(0);
+        updateGL();
+    }
+    void setxVelo(double v){
+        this->xVelo = v;
+    }
+    void setyVelo(double v){
+        this->yVelo = v;
+    }
+
     void setSelectedSolidBoundary(int i) {
         selected_boundary = i;
         updateGL();
@@ -60,22 +74,32 @@ public slots:
 private:
     void renderPolygon(const polygon &p) const;
     void renderRectangle();
+    void renderZone();
     void renderFluid();
     void renderLine();
     void renderHighlight();
     void renderInFlow();
-    void renderFlows();
+    void drawInFlow();
+    void renderCounter();
+    void renderWall();
+    void renderPeroWall();
+    void eraseBoundaryParticles(point mouse);
 
     void drawPolygons();
     void drawLines();
     void drawFLuids();
     void drawRects();
+    void drawZones();
     void drawNonGridParticles();
     void drawSimParticles();
     void renderRepairCircle();
     void renderRepairSquare();
     void addingNewLine(QLineF l);
     void fillRepairRect();
+    void drawWalls();
+    void drawPeroWalls();
+    void drawCounters();
+
     QImage loadTexture(char *filename, GLuint &textureID);
 
     QPointF getConnectPointOfRect(QRectF r,bool left);
@@ -109,14 +133,17 @@ private:
     QRectF RepairRect;
     QPointF RepairLeft;
     QPointF RepairRight;
-
+    QLineF InFlowLine;
+    QLineF CounterLine;
+    QLineF veloWall;
+    QLineF PeroWall;
     QPointF highlightP;
+    QRectF Zone;
     double cutoffradius = 0.0;
+    double xVelo;
+    double yVelo;
 
-
-    GLuint inFlow;
-    point pInFlow;
-    point pOutFlow;
+    //GLuint inFlow;
 
     /*
     std::vector<polygon> fluid1Polygons;
@@ -130,6 +157,11 @@ private:
     bool drawingRectangle = false;
     bool drawingRepairCircle = false;
     bool drawingRepairSquare = false;
+    bool drawingInFlow = false;
+    bool drawingWallVelo = false;
+    bool drawingPeroWall = false;
+    bool drawingcounter = false;
+    bool drawingzone = false;
 
     float boundary_color[3]  = {0.0, 0.0, 0.0};
     float fluid1_color[3]    = {0.0, 0.7, 0.95};
@@ -138,6 +170,12 @@ private:
     float white[3]           = {1.0, 1.0, 1.0};
     float orange[3]          = {1.0,  .5, 0.0};
     float green[3]           = {.51, 1.0, 0.0};
+    float darkgreen[3]       = {0.0, .39, 0.0};
+    float brown[3]           = {.54, .27, .07};
+    float purple[3]          = {.33, 0.1, .55};
+    float blue[3]            = {0.0, 0.0, .80};
+    float tomato[3]          = {1.0, .38, .27};
+    float khaki[3]           = {.94, .90, .54};
 
 
     point mouse = point{0.0, 0.0};

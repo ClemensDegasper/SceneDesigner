@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <cmath>
 #include <boost/foreach.hpp>
+#include <QElapsedTimer>
 
 //CGAL Stuff
 #include <CGAL/bounding_box.h>
@@ -89,11 +90,15 @@ void DesignerView::draw() {
         //glVertex2f(scene->getWidth(), 0);
     glEnd();
 
+
     if (drawingPolygon) {
         renderPolygon(*current_polygon);
     }
     if(drawingRectangle) {
         renderRectangle();
+    }
+    if(drawingzone) {
+        renderZone();
     }
     if(drawingfluid) {
         renderFluid();
@@ -101,15 +106,20 @@ void DesignerView::draw() {
     if(drawingline){
         renderLine();
     }
-    if(drawingRepairCircle){
-        renderRepairCircle();
-    }
-    if(drawingRepairSquare){
-        renderRepairSquare();
-    }
 
     if(!this->highlightP.isNull()){
         renderHighlight();
+    }
+
+    if(drawingWallVelo){
+        renderWall();
+    }
+
+    if(drawingPeroWall){
+        renderPeroWall();
+    }
+    if(drawingcounter){
+        renderCounter();
     }
 
 
@@ -145,14 +155,18 @@ void DesignerView::draw() {
     drawFLuids();
     drawNonGridParticles();
     drawPolygons();
+    drawInFlow();
+    drawWalls();
+    drawCounters();
+    drawPeroWalls();
+
     if(mode == RepairPoly)
         drawSimParticles();
 
 
-
+    drawZones();
     //render grid
     paintGrid();
-    renderFlows();
 
 }
 
@@ -288,6 +302,41 @@ void DesignerView::fillRepairRect()
         }
     }
 }
+
+void DesignerView::drawWalls()
+{
+    glLineWidth(3.0);
+    BOOST_FOREACH(const QLineF &l, this->scene->walls) {
+        glBegin(GL_LINE_STRIP);
+        glColor3fv(brown);
+        glVertex2d(l.p1().x(),l.p1().y());
+        glVertex2d(l.p2().x(),l.p2().y());
+        glEnd();
+    }
+}
+
+void DesignerView::drawPeroWalls()
+{
+    glLineWidth(3.0);
+    BOOST_FOREACH(const QLineF &l, this->scene->PeroWalls) {
+        glBegin(GL_LINE_STRIP);
+        glColor3fv(purple);
+        glVertex2d(l.p1().x(),l.p1().y());
+        glVertex2d(l.p2().x(),l.p2().y());
+        glEnd();
+    }
+}
+void DesignerView::drawCounters(){
+    glLineWidth(3.0);
+    BOOST_FOREACH(const QLineF &l, this->scene->counters) {
+        glBegin(GL_LINE_STRIP);
+        glColor3fv(blue);
+        glVertex2d(l.p1().x(),l.p1().y());
+        glVertex2d(l.p2().x(),l.p2().y());
+        glEnd();
+    }
+}
+
 
 QImage DesignerView::loadTexture(char *filename, GLuint &textureID)
 {
@@ -484,6 +533,19 @@ void DesignerView::drawFLuids(){
     }
 }
 
+void DesignerView::drawZones(){
+    glLineWidth(3.0);
+
+    BOOST_FOREACH(const QRectF &r, this->scene->zones) {
+        glBegin(GL_LINE_LOOP);
+        glColor3fv(tomato);
+        glVertex2d(r.topLeft().x(),r.topLeft().y());
+        glVertex2d(r.topRight().x(),r.topRight().y());
+        glVertex2d(r.bottomRight().x(),r.bottomRight().y());
+        glVertex2d(r.bottomLeft().x(),r.bottomLeft().y());
+        glEnd();
+    }
+}
 
 void DesignerView::drawLines(){
     glLineWidth(3.0);
@@ -515,7 +577,13 @@ void DesignerView::wheelEvent(QWheelEvent *e){
 
 void DesignerView::mousePressEvent(QMouseEvent *e) {
     down = true;
+    if(mode == Boundary){    //continously drawing boundrys
 
+        if(QApplication::keyboardModifiers() == Qt::ControlModifier)
+            this->scene->addParticleToNonGrid(point{realMouse.v[0],realMouse.v[1]});
+        else
+            this->scene->addParticleToNonGrid(point{mouse.v[0],mouse.v[1]});
+    }
     if (mode == Pan) {
 
 //        qDebug() << this->scene->fluid1s.size();
@@ -548,7 +616,7 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         }
 
         //check if deleting lines
-        double epsilon = 0.03;
+        double epsilon = 0.05;
         QLineF l1 = QLineF(mouse.v[0] - epsilon ,mouse.v[1] - epsilon ,mouse.v[0] + epsilon ,mouse.v[1] + epsilon);
         QLineF l2 = QLineF(mouse.v[0] + epsilon ,mouse.v[1] + epsilon ,mouse.v[0] - epsilon ,mouse.v[1] - epsilon);
         // creating to lines out ot that one mouse coord one for every diagonal
@@ -558,6 +626,14 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
                 this->scene->lines.erase(this->scene->lines.begin()+i);
             }
         }
+
+        //check if delete inflow
+        if(InFlowLine.intersect(l1,new QPointF()) == QLineF::BoundedIntersection || InFlowLine.intersect(l2,new QPointF()) == QLineF::BoundedIntersection)
+            InFlowLine.setLength(0);
+
+        // check if delete boundary particles
+        eraseBoundaryParticles(mouse);
+
         updateGL();
         return;
     }
@@ -642,40 +718,6 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
         return;
     }
 
-    if(mode == RepairCircle && e->button() == Qt::LeftButton){
-        if(drawingRepairCircle){
-            int counter = 0;
-            // adds all up in list, remove from nongrid
-            for(int i = this->scene->nongrid.size()-1; i >= 0; i--){
-                point p = this->scene->nongrid.at(i);
-                if(isParticleInCircle(p,this->circleRadius)){
-                    counter ++;
-                    this->scene->nongrid.erase(this->scene->nongrid.begin()+i);
-                }
-            }
-            distributeParticles(500,this->circleRadius);
-        }else{
-            circleRadius = QLineF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
-        }
-        drawingRepairCircle = !drawingRepairCircle;
-    }
-
-    if(mode == RepairSquare && e->button() == Qt::LeftButton){
-        if(drawingRepairSquare){
-            // remove all particles in drawn repairsquare from nongrid
-            for(int i = this->scene->nongrid.size()-1; i >= 0; i--){
-                point p = this->scene->nongrid.at(i);
-                if(RepairRect.contains(QPointF(p.x,p.y))){
-                    this->scene->nongrid.erase(this->scene->nongrid.begin()+i);
-                }
-            }
-            // add new better ones
-            fillRepairRect();
-        }else{
-            RepairRect = QRectF(QPointF(realMouse.v[0],realMouse.v[1]),QPointF(realMouse.v[0],realMouse.v[1]));
-        }
-        drawingRepairSquare= !drawingRepairSquare;
-    }
 
     if(mode == Line && e->button() == Qt::LeftButton){
         if(drawingline){
@@ -762,12 +804,62 @@ void DesignerView::mousePressEvent(QMouseEvent *e) {
     }
 
 
-    if(mode == PlaceInFlow){
-        this->pInFlow = point{e->x(),e->y()};//mouse.v[0],mouse.v[1]};
+    if(mode == InFlow && e->button() == Qt::LeftButton){
+        if(drawingInFlow){
+            InFlowLine.setP2(QPointF(mouse.v[0],mouse.v[1]));
+            drawingInFlow = false;
+            this->scene->inflow = InFlowLine;
+        }else{
+            drawingInFlow = true;
+            InFlowLine = QLineF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
     }
 
-    if(mode == PlaceOutFlow){
-        this->pOutFlow = point{e->x(),e->y()};//mouse.v[0],mouse.v[1]};
+    if(mode == WallVelo && e->button() == Qt::LeftButton){
+        if(drawingWallVelo){
+            veloWall.setP2(QPointF(mouse.v[0],mouse.v[1]));
+            drawingWallVelo = false;
+            this->scene->addWallWithVelo(veloWall,point{xVelo,yVelo});
+        }else{
+            drawingWallVelo = true;
+            veloWall = QLineF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
+    }
+
+    if(mode == PeriodicWalls && e->button() == Qt::LeftButton){
+        if(drawingPeroWall){
+            PeroWall.setP2(QPointF(mouse.v[0],mouse.v[1]));
+            drawingPeroWall = false;
+            this->scene->addPeriodicWall(PeroWall);
+        }else{
+            drawingPeroWall = true;
+            PeroWall = QLineF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
+    }
+
+    if(mode == Counter && e->button() == Qt::LeftButton){
+        if(drawingcounter){
+            CounterLine.setP2(QPointF(mouse.v[0],mouse.v[1]));
+            this->scene->addCounter(CounterLine);
+            drawingcounter = false;
+        }else{
+            drawingcounter = true;
+            CounterLine = QLineF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
+
+    }
+
+    if(mode == Zones && e->button() == Qt::LeftButton){
+        if(drawingzone){
+            QPointF firstClick = Zone.topLeft();
+            QPointF secondClick = QPointF(mouse.v[0],mouse.v[1]);
+            Zone = makeRect(firstClick,secondClick);
+            this->scene->addZone(Zone);
+            drawingzone = false;
+        }else{
+            drawingzone = true;
+            Zone = QRectF(QPointF(mouse.v[0],mouse.v[1]),QPointF(mouse.v[0],mouse.v[1]));
+        }
     }
 }
 
@@ -775,6 +867,28 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
     mouse = toWorld(e);
     realMouse = toWorld(e,false);
     updateGL();
+
+    if(mode == InFlow){
+        if(drawingInFlow){
+            InFlowLine.setP2(QPointF(mouse.v[0],mouse.v[1]));
+        }
+    }
+    if(mode == WallVelo){
+        if(drawingWallVelo){
+            veloWall.setP2(QPointF(mouse.v[0],mouse.v[1]));
+        }
+    }
+    if(mode == PeriodicWalls){
+        if(drawingPeroWall){
+            PeroWall.setP2(QPointF(mouse.v[0],mouse.v[1]));
+        }
+    }
+
+    if(mode == Counter){
+        if(drawingcounter){
+            CounterLine.setP2(QPointF(mouse.v[0],mouse.v[1]));
+        }
+    }
 
     if(mode == RepairPoly && QApplication::keyboardModifiers() == Qt::ControlModifier){
         if(drawingPolygon){
@@ -788,18 +902,6 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
         return;
     }
 
-    if(mode == RepairCircle){
-        if(drawingRepairCircle){
-            circleRadius.setP2(QPointF(mouse.v[0],mouse.v[1]));
-            qDebug()<<circleRadius.length();
-        }
-    }
-
-    if(mode == RepairSquare){
-        if(drawingRepairSquare){
-            RepairRect.setBottomLeft(QPointF(realMouse.v[0],realMouse.v[1]));
-        }
-    }
 
     if(mode == Line){
         if(drawingline){
@@ -817,23 +919,40 @@ void DesignerView::mouseMoveEvent(QMouseEvent *e) {
     if(drawingRectangle) {
         rectangle.setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
     }
+    if(drawingzone) {
+        Zone.setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
+    }
     if(drawingfluid){
         fluid.setBottomRight(QPointF(toWorld(e).v[0],toWorld(e).v[1]));
     }
 
     if(down) {
-        if(mode == Boundary)    //continously drawing boundrys
-            addParticle(mouse, size, mode);
-        if(mode == None)        //continously deleting particles
-            addParticle(mouse, 2, mode);
+        if(mode == Boundary){    //continously drawing boundrys
+
+            if(e->button() == Qt::ControlModifier)
+                this->scene->addParticleToNonGrid(point{realMouse.v[0],realMouse.v[1]});
+            else
+                this->scene->addParticleToNonGrid(point{mouse.v[0],mouse.v[1]});
+        }
+        if(mode == None){
+            eraseBoundaryParticles(mouse);
+        }
     }
 }
 
 void DesignerView::keyPressEvent(QKeyEvent *e)
 {
     if(mode == RepairPoly && e->key() == Qt::Key_S){
+        // commented stuff is from timing simulation steps
+        //QElapsedTimer timer;
+        //double sum = 0;
+        //for(int i = 0; i<1000; i++){
+        //timer.start();
         this->scene->Sim->takeStep();
+        //sum += timer.nsecsElapsed()/1000;
         updateGL();
+        //}
+        //qDebug()<< sum;
         return;
     }
     if(mode == RepairPoly && e->key() == Qt::Key_I){
@@ -899,6 +1018,19 @@ void DesignerView::renderRectangle()
 
 }
 
+void DesignerView::renderZone()
+{
+
+    glLineWidth(3.0);
+    glBegin(GL_LINE_LOOP);
+    glVertex2d(Zone.topLeft().x(),Zone.topLeft().y());
+    glVertex2d(Zone.bottomLeft().x(),Zone.bottomLeft().y());
+    glVertex2d(Zone.bottomRight().x(),Zone.bottomRight().y());
+    glVertex2d(Zone.topRight().x(),Zone.topRight().y());
+    glEnd();
+
+}
+
 void DesignerView::renderFluid()
 {
     glColor3fv(fluid1_color);
@@ -929,31 +1061,58 @@ void DesignerView::renderHighlight()
     glEnd();
 }
 
-void DesignerView::renderInFlow()
+void DesignerView::drawInFlow()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, inFlow);
-
-    glBegin(GL_QUADS);
-
-        glTexCoord2f(0,0); glVertex2f(0, 0);
-        glTexCoord2f(0.05,0); glVertex2f(0.05, 0);
-        glTexCoord2f(0.05,0.05); glVertex2f(0.05, 0.05);
-        glTexCoord2f(0,0.05); glVertex2f(0, 0.05);
-
+    glBegin(GL_LINE_STRIP);
+    glColor3fv(darkgreen);
+    glVertex2d(InFlowLine.p1().x(),InFlowLine.p1().y());
+    glVertex2d(InFlowLine.p2().x(),InFlowLine.p2().y());
     glEnd();
-
-    glDisable(GL_TEXTURE_2D);
 }
 
-void DesignerView::renderFlows()
+void DesignerView::renderCounter()
 {
-    glColor3f(0,0,0);
-    drawText(this->pOutFlow.v[0], this->pOutFlow.v[1], QString("OutFlow"));
-    drawText(this->pInFlow.v[0], this->pInFlow.v[1], QString("InFlow"));
+    glBegin(GL_LINE_STRIP);
+    glColor3fv(blue);
+    glVertex2d(CounterLine.p1().x(),CounterLine.p1().y());
+    glVertex2d(CounterLine.p2().x(),CounterLine.p2().y());
+    glEnd();
 }
+
+void DesignerView::renderWall()
+{
+    glLineWidth(3.0);
+    glBegin(GL_LINE_STRIP);
+    glColor3fv(brown);
+    glVertex2d(veloWall.p1().x(),veloWall.p1().y());
+    glVertex2d(veloWall.p2().x(),veloWall.p2().y());
+    glEnd();
+}
+
+void DesignerView::renderPeroWall()
+{
+    glLineWidth(3.0);
+    glBegin(GL_LINE_STRIP);
+    glColor3fv(purple);
+    glVertex2d(PeroWall.p1().x(),PeroWall.p1().y());
+    glVertex2d(PeroWall.p2().x(),PeroWall.p2().y());
+    glEnd();
+}
+
+void DesignerView::eraseBoundaryParticles(point mouse)
+{
+    double epsilon = 0.005;
+
+    // check if delete particles
+    QRectF eraseRect = QRectF(QPointF(mouse.v[0] - epsilon ,mouse.v[1] + epsilon),QPointF(mouse.v[0] + epsilon ,mouse.v[1] - epsilon));
+    for(int i = this->scene->nongrid.size()-1; i >= 0;i--){
+        point p = this->scene->nongrid.at(i);
+        if(eraseRect.contains(QPointF(p.v[0],p.v[1]))){
+            this->scene->nongrid.erase(this->scene->nongrid.begin()+i);
+        }
+    }
+}
+
 
 void DesignerView::drawPolygons()
 {
