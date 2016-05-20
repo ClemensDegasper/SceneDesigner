@@ -53,8 +53,11 @@ enum ParticleType {
     RepairSquare = 7,
     RepairCircle = 11,
     RepairPoly = 8,
-    PlaceInFlow = 9,
-    PlaceOutFlow = 10
+    InFlow = 9,
+    PeriodicWalls = 10,
+    WallVelo = 11,
+    Zones = 12,
+    Counter = 13
 };
 
 struct grid {
@@ -238,11 +241,52 @@ public:
     void addBoundaryLines(QLineF l){
         this->lines.push_back(l);
     }
+    void addWallWithVelo(QLineF w, point v){
+        walls.push_back(w);
+        velocities.push_back(v);
+    }
 
+    void eraseWallAt(int pos){
+        walls.erase(walls.begin()+pos);
+        velocities.erase(velocities.begin()+pos);
+    }
+
+    void clearWalls(){
+        walls.clear();
+        velocities.clear();
+    }
 
     void deleteParticle(const point &p) {
         g(snap(p.x), snap(p.y)) = None;
         emit changed();
+    }
+
+    void addPeriodicWall(QLineF wall){
+        if(PeroWalls.size() == 2){
+            PeroWalls.erase(PeroWalls.begin());
+            PeroWalls.push_back(wall);
+        }else{
+            PeroWalls.push_back(wall);
+        }
+    }
+    void clearPeriodicWalls(){
+        PeroWalls.clear();
+    }
+
+    void addCounter(QLineF counter){
+        this->counters.push_back(counter);
+    }
+
+    void clearCounters(){
+        this->counters.clear();
+    }
+
+    void addZone(QRectF zone){
+        this->zones.push_back(zone);
+    }
+
+    void clearZones(){
+        this->zones.clear();
     }
 
     const grid &const_grid = g;
@@ -252,6 +296,12 @@ public:
     std::vector<QLineF> lines;
     std::vector<polygon> polys;
     LenJonSim *Sim = 0;
+    QLineF inflow;
+    std::vector<QLineF> walls;
+    std::vector<point> velocities;
+    std::vector<QLineF> PeroWalls;
+    std::vector<QLineF> counters;
+    std::vector<QRectF> zones;
 
 
     void clearFluids(){
@@ -299,6 +349,11 @@ public:
         clearPolys();
         clearSimulation();
         emit changed();
+        this->inflow.setLength(0);
+        clearPeriodicWalls();
+        clearCounters();
+        clearWalls();
+        clearZones();
     }
 
 signals:
