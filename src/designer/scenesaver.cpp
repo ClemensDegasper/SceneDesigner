@@ -69,6 +69,24 @@ QVariantList save_fluid_rects(std::vector<QRectF> fluids){
     }
     return all;
 }
+QVariantMap save_inflow(QLineF inflow){
+    QVariantMap m;
+    QPointF p1 = inflow.p1();
+    QPointF p2 = inflow.p2();
+    if(inflow.length() == 0)
+        return m;
+    QVariantMap topleft;
+    QVariantMap botright;
+    topleft["x"] = QString::number(p1.x());
+    topleft["y"] = QString::number(p1.y());
+
+    botright["x"] = QString::number(p2.x());
+    botright["y"] = QString::number(p2.y());
+
+    m["topleft"] = topleft;
+    m["botright"] = botright;
+    return m;
+}
 
 QVariantList save_boundary_rects(std::vector<QRectF> rects){
     QVariantList all;
@@ -92,10 +110,107 @@ QVariantList save_boundary_rects(std::vector<QRectF> rects){
     return all;
 }
 
+QVariantList save_zones(std::vector<QRectF> zones){
+    QVariantList all;
+
+    BOOST_FOREACH(QRectF &r, zones) {
+        QPointF p1 = r.topLeft();
+        QPointF p2 = r.bottomRight();
+        QVariantMap m;
+        QVariantMap topleft;
+        QVariantMap botright;
+        topleft["x"] = QString::number(p1.x());
+        topleft["y"] = QString::number(p1.y());
+
+        botright["x"] = QString::number(p2.x());
+        botright["y"] = QString::number(p2.y());
+
+        m["topleft"] = topleft;
+        m["botright"] = botright;
+        all.append(m);
+    }
+    return all;
+}
+
 QVariantList save_boundary_lines(std::vector<QLineF> lines){
     QVariantList all;
 
     BOOST_FOREACH(QLineF &l, lines) {
+        QPointF p1 = l.p1();
+        QPointF p2 = l.p2();
+        QVariantMap m;
+        QVariantMap VMp1;
+        QVariantMap VMp2;
+        VMp1["x"] = QString::number(p1.x());
+        VMp1["y"] = QString::number(p1.y());
+
+        VMp2["x"] = QString::number(p2.x());
+        VMp2["y"] = QString::number(p2.y());
+
+        m["p1"] = VMp1;
+        m["p2"] = VMp2;
+        all.append(m);
+    }
+    return all;
+}
+
+QVariantList save_walls(std::vector<QLineF> walls,std::vector<point> velos){
+    QVariantList all;
+
+    for(int i = 0; i<walls.size(); i++){
+        QLineF l = walls.at(i);
+        point p = velos.at(i);
+        QPointF p1 = l.p1();
+        QPointF p2 = l.p2();
+        QVariantMap m;
+        QVariantMap VMp1;
+        QVariantMap VMp2;
+        QVariantMap v;
+        VMp1["x"] = QString::number(p1.x());
+        VMp1["y"] = QString::number(p1.y());
+
+        VMp2["x"] = QString::number(p2.x());
+        VMp2["y"] = QString::number(p2.y());
+
+        v["x"] = QString::number(p.v[0]);
+        v["y"] = QString::number(p.v[1]);
+
+        m["p1"] = VMp1;
+        m["p2"] = VMp2;
+        m["v"] = v;
+        all.append(m);
+    }
+    return all;
+}
+
+QVariantList save_counters(std::vector<QLineF> counters){
+    QVariantList all;
+
+    for(int i = 0; i<counters.size(); i++){
+        QLineF l = counters.at(i);
+        QPointF p1 = l.p1();
+        QPointF p2 = l.p2();
+        QVariantMap m;
+        QVariantMap VMp1;
+        QVariantMap VMp2;
+        VMp1["x"] = QString::number(p1.x());
+        VMp1["y"] = QString::number(p1.y());
+
+        VMp2["x"] = QString::number(p2.x());
+        VMp2["y"] = QString::number(p2.y());
+
+        m["p1"] = VMp1;
+        m["p2"] = VMp2;
+        all.append(m);
+    }
+    return all;
+}
+
+QVariantList save_pero_walls(std::vector<QLineF> walls){
+    QVariantList all;
+
+    for(int i = 0; i<walls.size(); i++){
+        QLineF l = walls.at(i);
         QPointF p1 = l.p1();
         QPointF p2 = l.p2();
         QVariantMap m;
@@ -169,6 +284,13 @@ void addFluidRects(QVariantMap root,Scene *s){
     }
 }
 
+void addInFlow(QVariantMap root,Scene *s){
+    QVariantMap m = root["inflow"].toMap();
+    QPointF tl = QPointF(m["topleft"].toMap()["x"].toDouble(), m["topleft"].toMap()["y"].toDouble());
+    QPointF br = QPointF(m["botright"].toMap()["x"].toDouble(), m["botright"].toMap()["y"].toDouble());
+    s->inflow = QLineF(tl,br);
+}
+
 void addBoundaryRects(QVariantMap root,Scene *s){
     QVariantList rects = root["boundary_rects"].toList();
     for(int i = 0; i< rects.size(); i++){
@@ -176,6 +298,16 @@ void addBoundaryRects(QVariantMap root,Scene *s){
         QPointF tl = QPointF(m["topleft"].toMap()["x"].toDouble(), m["topleft"].toMap()["y"].toDouble());
         QPointF br = QPointF(m["botright"].toMap()["x"].toDouble(), m["botright"].toMap()["y"].toDouble());
         s->addBoundaryRect(QRectF(tl,br));
+    }
+}
+
+void addZones(QVariantMap root,Scene *s){
+    QVariantList zones = root["zones"].toList();
+    for(int i = 0; i< zones.size(); i++){
+        QVariantMap m = zones.at(i).toMap();
+        QPointF tl = QPointF(m["topleft"].toMap()["x"].toDouble(), m["topleft"].toMap()["y"].toDouble());
+        QPointF br = QPointF(m["botright"].toMap()["x"].toDouble(), m["botright"].toMap()["y"].toDouble());
+        s->addZone(QRectF(tl,br));
     }
 }
 
@@ -189,6 +321,35 @@ void addBoundaryLines(QVariantMap root,Scene *s){
     }
 }
 
+void addWalls(QVariantMap root,Scene *s){
+    QVariantList lines = root["walls_with_velocities"].toList();
+    for(int i = 0; i< lines.size(); i++){
+        QVariantMap m = lines.at(i).toMap();
+        QPointF p1 = QPointF(m["p1"].toMap()["x"].toDouble(), m["p1"].toMap()["y"].toDouble());
+        QPointF p2 = QPointF(m["p2"].toMap()["x"].toDouble(), m["p2"].toMap()["y"].toDouble());
+        point p = point{m["v"].toMap()["x"].toDouble(),m["v"].toMap()["y"].toDouble()};
+        s->addWallWithVelo(QLineF(p1,p2),p);
+    }
+}
+void addPeroWalls(QVariantMap root,Scene *s){
+    QVariantList lines = root["periodic_walls"].toList();
+    for(int i = 0; i< lines.size(); i++){
+        QVariantMap m = lines.at(i).toMap();
+        QPointF p1 = QPointF(m["p1"].toMap()["x"].toDouble(), m["p1"].toMap()["y"].toDouble());
+        QPointF p2 = QPointF(m["p2"].toMap()["x"].toDouble(), m["p2"].toMap()["y"].toDouble());
+        s->addPeriodicWall(QLineF(p1,p2));
+    }
+}
+
+void addCounters(QVariantMap root,Scene *s){
+    QVariantList lines = root["counters"].toList();
+    for(int i = 0; i< lines.size(); i++){
+        QVariantMap m = lines.at(i).toMap();
+        QPointF p1 = QPointF(m["p1"].toMap()["x"].toDouble(), m["p1"].toMap()["y"].toDouble());
+        QPointF p2 = QPointF(m["p2"].toMap()["x"].toDouble(), m["p2"].toMap()["y"].toDouble());
+        s->addCounter(QLineF(p1,p2));
+    }
+}
 
 void save_scene(Scene *s, const QString &file_name) {
     QVariantMap file;
@@ -199,6 +360,11 @@ void save_scene(Scene *s, const QString &file_name) {
     file["fluid_rects"] = save_fluid_rects(s->fluid1s);
     file["boundary_rects"] = save_boundary_rects(s->rects);
     file["boundary_lines"] = save_boundary_lines(s->lines);
+    file["inflow"] = save_inflow(s->inflow);
+    file["walls_with_velocities"] = save_walls(s->walls,s->velocities);
+    file["periodic_walls"] = save_pero_walls(s->PeroWalls);
+    file["counters"] = save_counters(s->counters);
+    file["zones"] = save_zones(s->zones);
 
 
     QJson::Serializer serializer;
@@ -234,7 +400,11 @@ void open_scene(Scene *s, const QString &file_name) {
     addFluidRects(root,s);
     addBoundaryRects(root,s);
     addBoundaryLines(root,s);
-
+    addInFlow(root,s);
+    addWalls(root,s);
+    addPeroWalls(root,s);
+    addCounters(root,s);
+    addZones(root,s);
 }
 
 
@@ -465,6 +635,11 @@ void export_scene_to_particle_json(Scene *s, const QString &file_name)
         constGrid.append(nonGrid.at(i));
     }
     file["boundary_particles"] =  constGrid;
+    file["inflow"] = save_inflow(s->inflow);
+    file["walls_with_velocities"] = save_walls(s->walls,s->velocities);
+    file["periodic_walls"] = save_pero_walls(s->PeroWalls);
+    file["counters"] = save_counters(s->counters);
+    file["zones"] = save_zones(s->zones);
 
 
     QJson::Serializer serializer;

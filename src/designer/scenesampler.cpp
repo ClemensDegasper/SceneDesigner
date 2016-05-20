@@ -144,7 +144,8 @@ void SceneSampler::recLoop(std::vector<QRectF> rects,std::vector<QRectF> Origina
         }
 
         //save new scene
-        export_scene_to_particle_json(this->s,QString("sampleScene" + QString::number(this->SampleSceneCounter) + ".json"));
+        save_scene(this->s,QString("sampleScene" + QString::number(this->SampleSceneCounter) + ".json"));
+        //export_scene_to_particle_json(this->s,QString("sampleScene" + QString::number(this->SampleSceneCounter) + ".json"));
         return;
     }
 
